@@ -652,6 +652,8 @@ void PSLConfParser::handleHALTuning(const char *name, const char **atts)
             info->mSensorFlipping |= SENSOR_FLIP_V;
     } else if (strcmp(name, "supportIsoMap") == 0) {
         info->mSupportIsoMap = ((strcmp(atts[1], "true") == 0) ? true : false);
+	} else if (strcmp(name, "forceAutoGenAndroidMetas") == 0) {
+		info->mForceAutoGenAndroidMetas = ((strcasecmp(atts[1], "true") == 0) ? true : false);
     } else if (strcmp(name, "supportTuningSize") == 0) {
         struct FrameSize_t frame;
         char * endPtr = nullptr;

@@ -32,6 +32,7 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <CameraMetadata.h>
+#include <rkisp_control_loop.h>
 #include "RKISP1CameraCapInfo.h"
 // TODO this should come from the crl header file
 // crl is a common code module in sensor driver, which contains
@@ -125,6 +126,408 @@ ia_uid GcssKeyMap::str2key(const std::string &key_str)
     return GCSS_KEY_NA;
 }
 
+int resolution_array[][2] =
+{
+	{4096, 3072},
+	{3264, 2448},
+	{2688, 1512},
+	{2592, 1944},
+	{2096, 1568},
+	{1920, 1080},
+	{1632, 1224},
+	{1600, 1200},
+	{1296, 972},
+	{1280, 960},
+	{1280, 720},
+	{800, 600},
+	{640, 480},
+	{640, 360},
+	{352, 288},
+	{320, 240},
+	{176, 144}
+};
+
+int format_array[] =
+{
+	ANDROID_SCALER_AVAILABLE_FORMATS_BLOB,
+	ANDROID_SCALER_AVAILABLE_FORMATS_YCbCr_420_888,
+	ANDROID_SCALER_AVAILABLE_FORMATS_IMPLEMENTATION_DEFINED
+};
+
+static int construct_stream_config_metadata(
+	rkisp_metadata_info_t *pMetaInfo,
+	camera_metadata *metadata)
+{
+	int32_t index = 0;
+	int32_t config_buf[256];
+
+	int format_size = sizeof(format_array) / sizeof(int);
+	int res_size = sizeof(resolution_array) / sizeof(int) / 2;
+	for(int i = 0; i < format_size; i++){
+		for(int j = 0; j < res_size; j++){
+			if(pMetaInfo->full_size.width >= resolution_array[j][0] &&
+			   pMetaInfo->full_size.height>= resolution_array[j][1]){
+			      config_buf[index++] = format_array[i];
+			      config_buf[index++] = resolution_array[j][0];
+			      config_buf[index++] = resolution_array[j][1];
+			      config_buf[index++] = ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT;
+			   }
+		}
+	}
+
+	LOGD("*******STREAM CONFIG OUTPUT START*****");
+	for(int k = 0; k < index; k += 4){
+		LOGD("%d %d %d %d", config_buf[k], config_buf[k+1], config_buf[k+2], config_buf[k+3]);
+	}
+	LOGD("*******STREAM CONFIG OUTPUT END*****");
+	MetadataHelper::updateMetadata(metadata, ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS, config_buf, index);
+	return 0;
+}
+
+static int construct_frame_duration_metadata(
+	rkisp_metadata_info_t *pMetaInfo,
+	camera_metadata *metadata)
+{
+	int32_t index = 0;
+	int64_t config_buf[256];
+	int64_t bin_fram_duration, full_fram_duration;
+	int format_size = sizeof(format_array) / sizeof(int);
+	int res_size = sizeof(resolution_array) / sizeof(int) / 2;
+
+	if(pMetaInfo->res_num == 1){
+		full_fram_duration = (int64_t)((1000.0/pMetaInfo->full_size.fps)*1e6);
+	}else if(pMetaInfo->res_num == 2){
+		full_fram_duration = (int64_t)((1000.0/pMetaInfo->full_size.fps)*1e6);
+		bin_fram_duration = (int64_t)((1000.0/pMetaInfo->binning_size.fps)*1e6);
+	}
+
+	for(int i = 0; i < format_size; i++){
+		for(int j = 0; j < res_size; j++){
+			if(pMetaInfo->binning_size.width >= resolution_array[j][0] &&
+			   pMetaInfo->binning_size.height>= resolution_array[j][1]){
+			      config_buf[index++] = format_array[i];
+			      config_buf[index++] = resolution_array[j][0];
+			      config_buf[index++] = resolution_array[j][1];
+			      config_buf[index++] = bin_fram_duration;
+			 }else if(pMetaInfo->full_size.width >= resolution_array[j][0] &&
+			   pMetaInfo->full_size.height>= resolution_array[j][1]){
+			      config_buf[index++] = format_array[i];
+			      config_buf[index++] = resolution_array[j][0];
+			      config_buf[index++] = resolution_array[j][1];
+			      config_buf[index++] = full_fram_duration;
+			 }
+		}
+	}
+	LOGD("*******FRAME DURATION CONFIG OUTPUT START*****");
+	for(int k = 0; k < index; k += 4){
+		LOGD("%lld %lld %lld %lld", config_buf[k], config_buf[k+1], config_buf[k+2], config_buf[k+3]);
+	}
+	LOGD("*******FRAME DURATION CONFIG OUTPUT END*****");
+	MetadataHelper::updateMetadata(metadata, ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS, config_buf, index);
+
+	index = 0;
+	for(int j = 0; j < res_size; j++){
+		if(pMetaInfo->binning_size.width >= resolution_array[j][0] &&
+		   pMetaInfo->binning_size.height>= resolution_array[j][1]){
+			  config_buf[index++] = ANDROID_SCALER_AVAILABLE_FORMATS_BLOB;
+			  config_buf[index++] = resolution_array[j][0];
+			  config_buf[index++] = resolution_array[j][1];
+			  config_buf[index++] = bin_fram_duration;
+		 }else if(pMetaInfo->full_size.width >= resolution_array[j][0] &&
+		   pMetaInfo->full_size.height>= resolution_array[j][1]){
+			  config_buf[index++] = ANDROID_SCALER_AVAILABLE_FORMATS_BLOB;
+			  config_buf[index++] = resolution_array[j][0];
+			  config_buf[index++] = resolution_array[j][1];
+			  config_buf[index++] = full_fram_duration;
+		 }
+	}
+
+	LOGD("*******STALL DURATION CONFIG OUTPUT START*****");
+	for(int k = 0; k < index; k += 4){
+		LOGD("%lld %lld %lld %lld", config_buf[k], config_buf[k+1], config_buf[k+2], config_buf[k+3]);
+	}
+	LOGD("*******STALL DURATION CONFIG OUTPUT END*****");
+
+	MetadataHelper::updateMetadata(metadata, ANDROID_SCALER_AVAILABLE_STALL_DURATIONS, config_buf, index);
+
+	return 0;
+}
+
+static int construct_raw_sensor_fps_range_metadata(
+	rkisp_metadata_info_t *pMetaInfo,
+	camera_metadata *metadata)
+{
+	int config_buf[256], index = 0;
+	int iq_min_fps, dyn_min_fps, full_size_fps, binning_size_fps;
+
+	full_size_fps = pMetaInfo->full_size.fps;
+	binning_size_fps = pMetaInfo->binning_size.fps;
+	iq_min_fps = 1.0 / pMetaInfo->time_range[1];
+	dyn_min_fps = iq_min_fps < full_size_fps ? iq_min_fps : full_size_fps;
+	if(pMetaInfo->res_num == 1){
+		if(full_size_fps < 24)
+		{
+			LOGE("Error: size (%dx%d) max fps should be lager than 24, now is %d.",
+			pMetaInfo->full_size.width, pMetaInfo->full_size.height, full_size_fps);
+			return -1;
+		}
+		config_buf[index++] = dyn_min_fps < 15 ? dyn_min_fps : 15;
+		config_buf[index++] = full_size_fps;
+		config_buf[index++] = full_size_fps;
+		config_buf[index++] = full_size_fps;
+	}else if(pMetaInfo->res_num == 2){
+		if(full_size_fps > binning_size_fps)
+		{
+			LOGE("Error: binning size(%dx%d) fps(%d) should be lager than full size(%dx%d) fps (%d)!",
+				 pMetaInfo->binning_size.width, pMetaInfo->binning_size.height, binning_size_fps,
+				 pMetaInfo->full_size.width, pMetaInfo->full_size.height, full_size_fps);
+			return -1;
+		}
+		if(binning_size_fps < 24)
+		{
+			LOGE("Error: binning size (%dx%d) max fps should be lager than 24, now is %d.",
+			pMetaInfo->binning_size.width, pMetaInfo->binning_size.height, binning_size_fps);
+			return -1;
+		}
+
+		if (full_size_fps == binning_size_fps) {
+			config_buf[index++] = dyn_min_fps < 15 ? dyn_min_fps : 15;
+			config_buf[index++] = full_size_fps;
+			config_buf[index++] = full_size_fps;
+			config_buf[index++] = full_size_fps;
+		}else {
+			if (full_size_fps < 15){
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = dyn_min_fps;
+				config_buf[index++] = binning_size_fps;
+				config_buf[index++] = binning_size_fps;
+				config_buf[index++] = binning_size_fps;
+			}else{
+				config_buf[index++] = 15;
+				config_buf[index++] = 15;
+				config_buf[index++] = dyn_min_fps;
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = dyn_min_fps;
+				config_buf[index++] = binning_size_fps;
+				config_buf[index++] = binning_size_fps;
+				config_buf[index++] = binning_size_fps;
+			}
+		}
+	}
+
+	LOGD("*******FPS RANGE CONFIG OUTPUT START*****");
+	for(int k = 0; k < index; k += 2){
+		LOGD("[%d %d]", config_buf[k], config_buf[k+1]);
+	}
+	LOGD("*******FPS RANGE CONFIG OUTPUT END*****");
+
+	MetadataHelper::updateMetadata(metadata, ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES, config_buf, index);
+	return 0;
+}
+
+static int construct_soc_sensor_fps_range_metadata(
+	rkisp_metadata_info_t *pMetaInfo,
+	camera_metadata *metadata)
+{
+	int config_buf[256], index = 0;
+	int iq_min_fps, dyn_min_fps, full_size_fps, binning_size_fps;
+
+	full_size_fps = pMetaInfo->full_size.fps;
+	binning_size_fps = pMetaInfo->binning_size.fps;
+
+	if(pMetaInfo->res_num == 1){
+		if(full_size_fps < 24)
+		{
+			LOGE("Error: size (%dx%d) max fps should be lager than 24, now is %d.",
+			pMetaInfo->full_size.width, pMetaInfo->full_size.height, full_size_fps);
+			return -1;
+		}
+		config_buf[index++] = 15;
+		config_buf[index++] = full_size_fps;
+		config_buf[index++] = full_size_fps;
+		config_buf[index++] = full_size_fps;
+	}else if(pMetaInfo->res_num == 2){
+		if(full_size_fps > binning_size_fps)
+		{
+			LOGE("Error: binning size(%dx%d) fps(%d) should be lager than full size(%dx%d) fps (%d)!",
+				 pMetaInfo->binning_size.width, pMetaInfo->binning_size.height, binning_size_fps,
+				 pMetaInfo->full_size.width, pMetaInfo->full_size.height, full_size_fps);
+			return -1;
+		}
+		if(binning_size_fps < 24)
+		{
+			LOGE("Error: binning size (%dx%d) max fps should be lager than 24, now is %d.",
+			pMetaInfo->binning_size.width, pMetaInfo->binning_size.height, binning_size_fps);
+			return -1;
+		}
+
+		if (full_size_fps == binning_size_fps) {
+			config_buf[index++] = 15;
+			config_buf[index++] = full_size_fps;
+			config_buf[index++] = full_size_fps;
+			config_buf[index++] = full_size_fps;
+		}else {
+			if (full_size_fps < 15){
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = binning_size_fps;
+				config_buf[index++] = binning_size_fps;
+				config_buf[index++] = binning_size_fps;
+			}else{
+				config_buf[index++] = 15;
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = full_size_fps;
+				config_buf[index++] = binning_size_fps;
+				config_buf[index++] = binning_size_fps;
+				config_buf[index++] = binning_size_fps;
+			}
+		}
+	}
+
+	LOGD("*******FPS RANGE CONFIG OUTPUT START*****");
+	for(int k = 0; k < index; k += 2){
+		LOGD("[%d %d]", config_buf[k], config_buf[k+1]);
+	}
+	LOGD("*******FPS RANGE CONFIG OUTPUT END*****");
+
+	MetadataHelper::updateMetadata(metadata, ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES, config_buf, index);
+	return 0;
+}
+
+#define MAX_THUMBSIZE_W  (320)
+#define MAX_THUMBSIZE_H  (240)
+
+int thumbnail_array[][2] =
+{
+	{0, 0},
+	{128, 96},
+	{160, 120},
+	{240, 135},
+	{240, 180},
+	{320, 180},
+	{MAX_THUMBSIZE_W, MAX_THUMBSIZE_H}
+};
+static int construct_thumbnail_sizes_metadata(
+	rkisp_metadata_info_t *pMetaInfo,
+	camera_metadata *metadata)
+{
+	int  config_buf[64], index = 0;
+	int pic_width, pic_height;
+	int array_size, max_w, max_h, new_h;
+	float ratio;
+
+	array_size = sizeof(resolution_array) / sizeof(int) / 2;
+	pic_width = pMetaInfo->full_size.width;
+	pic_height = pMetaInfo->full_size.height;
+	for(int i = 0; i < array_size; i++){
+		if ((pMetaInfo->full_size.width >= resolution_array[i][0]) &&
+			(pMetaInfo->full_size.height >= resolution_array[i][1])){
+			pic_width = resolution_array[i][0];
+			pic_height = resolution_array[i][1];
+		}
+		break;
+	}
+
+	ratio = (float)pic_width / (float)pic_height;
+	max_h = MAX_THUMBSIZE_W / ratio;
+	if (max_h > MAX_THUMBSIZE_H)
+		max_h = MAX_THUMBSIZE_H;
+	max_w = max_h * ratio;
+
+	array_size = sizeof(thumbnail_array) / sizeof(int) / 2;
+	for(int i = 0; i < array_size; i++){
+		if ((thumbnail_array[i][0] * thumbnail_array[i][1]) < (max_w * max_h)) {
+			config_buf[index++] = thumbnail_array[i][0];
+			config_buf[index++] = thumbnail_array[i][1];
+		}else if(((thumbnail_array[i][0] * thumbnail_array[i][1]) ==
+				(max_w * max_h)) && (thumbnail_array[i][0] <= max_w)){
+			config_buf[index++] = thumbnail_array[i][0];
+			config_buf[index++] = thumbnail_array[i][1];
+		}
+	}
+
+	LOGD("*******THUMBNAIL SIZE  CONFIG OUTPUT START*****");
+	for(int i = 0; i < index; i += 2){
+		LOGD("[%d %d]", config_buf[i], config_buf[i+1]);
+	}
+	LOGD("*******THUMBNAIL SIZE CONFIG OUTPUT END*****");
+	MetadataHelper::updateMetadata(metadata, ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES, config_buf, index);
+	return 0;
+}
+
+static void modify_raw_sensor_metadata
+(
+	rkisp_metadata_info_t* metadata_info,
+	camera_metadata *staticMeta
+)
+{
+	int gain_range[2];
+	int64_t time_range[2];
+
+	gain_range[0] = metadata_info->gain_range[0] * 100;
+	gain_range[1] = metadata_info->gain_range[1] * 100;
+	LOGD("GAIN RANGE: [%d %d]", gain_range[0], gain_range[1]);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_INFO_SENSITIVITY_RANGE, gain_range, 2);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_INFO_SENSITIVITY_RANGE, gain_range, 2);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_MAX_ANALOG_SENSITIVITY, &gain_range[1], 1);
+	time_range[0] = 100000;//metadata_info->time_range[0] * 1e9;
+	time_range[1] = 200000000;//metadata_info->time_range[1] * 1e9;
+	LOGD("TIME RANGE: [%lld %lld]", time_range[0], time_range[1]);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_INFO_EXPOSURE_TIME_RANGE, time_range, 2);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_INFO_MAX_FRAME_DURATION, &time_range[1], 1);
+
+	int array_size[4];
+	array_size[0] = 0;
+	array_size[1] = 0;
+	array_size[2] = metadata_info->full_size.width;
+	array_size[3] = metadata_info->full_size.height;
+	LOGD("ARRAY SIZE: [%d %d %d %d]", array_size[0], array_size[1], array_size[2], array_size[3]);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE, array_size, 4);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, &array_size[2], 2);
+	int jpegmaxsize = metadata_info->full_size.width * metadata_info->full_size.height * 3 / 2;
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_JPEG_MAX_SIZE, &jpegmaxsize, 1);
+	construct_thumbnail_sizes_metadata(metadata_info, staticMeta);
+	construct_stream_config_metadata(metadata_info, staticMeta);
+	construct_frame_duration_metadata(metadata_info, staticMeta);
+	construct_raw_sensor_fps_range_metadata(metadata_info, staticMeta);
+}
+
+static void modify_soc_sensor_metadata
+(
+	rkisp_metadata_info_t* metadata_info,
+	camera_metadata *staticMeta)
+{
+	int gain_range[2] = {100, 1600};
+	int64_t time_range[2] = {100000,666666666};
+	LOGD("GAIN RANGE: [%d %d]", gain_range[0], gain_range[1]);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_INFO_SENSITIVITY_RANGE, gain_range, 2);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_MAX_ANALOG_SENSITIVITY, &gain_range[1], 1);
+	LOGD("TIME RANGE: [%lld %lld]", time_range[0], time_range[1]);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_INFO_EXPOSURE_TIME_RANGE, time_range, 2);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_INFO_MAX_FRAME_DURATION, &time_range[1], 1);
+
+	int array_size[4];
+	array_size[0] = 0;
+	array_size[1] = 0;
+	array_size[2] = metadata_info->full_size.width;
+	array_size[3] = metadata_info->full_size.height;
+	LOGD("ARRAY SIZE: [%d %d %d %d]", array_size[0], array_size[1], array_size[2], array_size[3]);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE, array_size, 4);
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, &array_size[2], 2);
+	int jpegmaxsize = metadata_info->full_size.width * metadata_info->full_size.height * 3 / 2;
+	MetadataHelper::updateMetadata(staticMeta, ANDROID_JPEG_MAX_SIZE, &jpegmaxsize, 1);
+	construct_thumbnail_sizes_metadata(metadata_info, staticMeta);
+	construct_stream_config_metadata(metadata_info, staticMeta);
+	construct_frame_duration_metadata(metadata_info, staticMeta);
+	construct_soc_sensor_fps_range_metadata(metadata_info, staticMeta);
+}
+
 
 /**
  * This method is only called once when the HAL library is loaded
@@ -167,7 +570,19 @@ void PlatformData::init()
         return;
     }
 
-
+	rkisp_metadata_info_t *metadata_info = NULL;
+	int num = 0;
+	ret = rkisp_construct_iq_default_metadatas(&metadata_info, &num);
+	if (ret < 0) {
+        LOGE("Fail to construct iq default metadatas!");
+        deinit();
+        return;
+	}
+	if (num <= 0) {
+        LOGE("construct default metadata count: %d", num);
+        deinit();
+        return;
+	}
     /**
      * This number currently comes from the number if sections in the XML
      * in the future this is not reliable if we want to have multiple cameras
@@ -179,9 +594,37 @@ void PlatformData::init()
         const CameraCapInfo *cci = PlatformData::getCameraCapInfo(i);
         if (cci == nullptr)
             continue;
-        if (cci->sensorType() != SENSOR_TYPE_RAW)
-            continue;
-    }
+        if(cci->getForceAutoGenAndroidMetas()) {
+			const struct SensorDriverDescriptor *pDesc;
+			pDesc = mCameraHWInfo->getSensorDrvDes(i);
+
+			if(NULL == pDesc)
+				continue;
+			std::string entity_name = pDesc->mModuleIndexStr + "_" + pDesc->mPhyModuleOrient + "_" + pDesc->mModuleRealSensorName;
+
+			for(int j = 0; j < num; j++)
+			{
+				if(strstr(metadata_info[j].entity_name, entity_name.c_str()))
+				{
+					if (cci->sensorType() == SENSOR_TYPE_RAW) {
+						std::vector<struct FrameSize_t> tuningSize;
+						struct FrameSize_t frameSize;
+						RKISP1CameraCapInfo *capInfo =  const_cast<RKISP1CameraCapInfo *>(static_cast<const RKISP1CameraCapInfo*>(cci));
+						frameSize.width = metadata_info[j].full_size.width;
+						frameSize.height = metadata_info[j].full_size.height;
+						tuningSize.push_back(frameSize);
+						frameSize.width = metadata_info[j].binning_size.width;
+						frameSize.height = metadata_info[j].binning_size.height;
+						tuningSize.push_back(frameSize);
+						capInfo->mSupportTuningSize = tuningSize;
+						modify_raw_sensor_metadata(&metadata_info[j], getStaticMetadata(i));
+					}else if(cci->sensorType() == SENSOR_TYPE_SOC){
+						modify_soc_sensor_metadata(&metadata_info[j], getStaticMetadata(i));
+					}
+				}
+			}
+		}
+	}
 
     mInitialized = true;
     LOGD("Camera HAL static init - Done!");
@@ -331,7 +774,7 @@ int PlatformData::getPartialMetadataCount(int cameraId)
     return partialMetadataCount;
 }
 
-const camera_metadata_t * PlatformData::getStaticMetadata(int cameraId)
+camera_metadata_t * PlatformData::getStaticMetadata(int cameraId)
 {
     if (cameraId >= numberOfCameras()) {
         LOGE("ERROR @%s: Invalid camera: %d", __FUNCTION__, cameraId);

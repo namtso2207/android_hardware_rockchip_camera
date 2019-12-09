@@ -261,8 +261,10 @@ public:
     CameraCapInfo() : mSensorType(SENSOR_TYPE_NONE), mGCMNodes(nullptr) {};
     virtual ~CameraCapInfo() {};
     virtual int sensorType(void) const = 0;
+	virtual bool getForceAutoGenAndroidMetas(void) const = 0;
     virtual const std::string& getIqTuningFile(void) const = 0;
     const GraphConfigNodes* getGraphConfigNodes() const { return mGCMNodes; }
+    virtual void setSupportTuningSizes(std::vector<struct FrameSize_t> frameSize) = 0; 
 
 protected:
     friend class IPSLConfParser;
@@ -323,7 +325,7 @@ public:
 
     static int numberOfCameras(void);
     static void getCameraInfo(int cameraId, struct camera_info* info);
-    static const camera_metadata_t* getStaticMetadata(int cameraId);
+    static camera_metadata_t* getStaticMetadata(int cameraId);
     static camera_metadata_t* getDefaultMetadata(int cameraId, int requestType);
     static CameraHwType getCameraHwType(int cameraId);
     static const CameraCapInfo* getCameraCapInfo(int cameraId);

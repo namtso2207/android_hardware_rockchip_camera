@@ -38,7 +38,8 @@ RKISP1CameraCapInfo::RKISP1CameraCapInfo(SensorType type):
     mSensorName(""),
     mModuleIndexStr(""),
     mNvmData({nullptr,0}),
-    mTestPatternBayerFormat("")
+    mTestPatternBayerFormat(""),
+    mForceAutoGenAndroidMetas(false)
 {
     CLEAR(mFov);
 }

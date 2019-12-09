@@ -62,3 +62,6 @@ V2.0.0
 		V2.2.0
 	matched rkisp1 driver version:
 		v0.1.5
+V2.1.0
+    - construct sensor's some static metadatas before ctrloop starting.
+    - add forceAutoGenAndroidMetas in camera3_profiles.xml.

@@ -47,6 +47,7 @@ public:
     int frameInitialSkip(void) const { return mFrameInitialSkip; };
     int getCITMaxMargin(void) const { return mCITMaxMargin; };
     bool getSupportIsoMap(void) const { return mSupportIsoMap; }
+	virtual bool getForceAutoGenAndroidMetas(void) const { return mForceAutoGenAndroidMetas; }
     const char* getNvmDirectory(void) const { return mNvmDirectory.c_str(); };
     const char* getSensorName(void) const { return mSensorName.c_str(); };
     const ia_binary_data getNvmData(void) const { return mNvmData; };
@@ -54,7 +55,7 @@ public:
     const std::string getTestPatternBayerFormat(void) const { return mTestPatternBayerFormat; };
     const std::string& getIqTuningFile(void) const { return mIqTuningFile; };
     const std::vector<struct FrameSize_t> getSupportTuningSizes() const { return mSupportTuningSize; }
-
+    void setSupportTuningSizes(std::vector<struct FrameSize_t> frameSize) { mSupportTuningSize = frameSize; }
     const std::string getMediaCtlEntityName(std::string type) const;
     const std::vector<std::string> getMediaCtlEntityNames(std::string type) const;
     const std::string getMediaCtlEntityType(std::string name) const;
@@ -71,6 +72,7 @@ public:
     int mStatisticsInitialSkip;
     int mCITMaxMargin;
     bool mSupportIsoMap;
+	bool mForceAutoGenAndroidMetas;
 
     std::vector<struct FrameSize_t> mSupportTuningSize;
 

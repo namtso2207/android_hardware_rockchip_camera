@@ -17,7 +17,12 @@
 #ifndef _RKISP_CONTROL_LOOP_H_
 #define _RKISP_CONTROL_LOOP_H_
 
+#ifdef ANDROID_VERSION_ABOVE_8_X
 #include <CameraMetadata.h>
+using ::android::hardware::camera::common::V1_0::helper::CameraMetadata;
+#else
+#include <camera/CameraMetadata.h>
+#endif
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -81,9 +86,29 @@ struct rkisp_cl_prepare_params_s {
 struct rkisp_cl_frame_metadata_s {
     //frame id
     int id;
-  // TODO: use camera_metadata from Android directly ?
+    // TODO: use camera_metadata from Android directly ?
     const camera_metadata_t *metas;
 };
+
+typedef struct frame_interval_s {
+	int width;
+	int height;
+	float fps;
+}frame_interval_t;
+
+typedef struct rkisp_metadata_info_s {
+	char entity_name[64];
+	float gain_range[2];
+	float time_range[2];
+	frame_interval_t binning_size;
+	frame_interval_t full_size;
+	int res_num;
+}rkisp_metadata_info_t;
+
+/*
+ * used to generate static iq metas, can be called before cl running
+ */
+int rkisp_construct_iq_default_metadatas(rkisp_metadata_info_t **meta_info, int *num);
 
 /*
  * Callback methods for the control loop to call into the hal.
