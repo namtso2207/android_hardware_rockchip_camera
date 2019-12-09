@@ -133,9 +133,9 @@ void TuningServer::init(ControlUnit *pCu, RKISP1CameraHw* pCh, int camId)
         property_get("sys.usb.config", prop_adb, "adb");
         if(strcmp(prop_adb, "uvc,adb")){
             property_set("sys.usb.config", "none");
-            usleep(3000000);
+            usleep(300000);
             property_set("sys.usb.config", "uvc,adb");
-            usleep(3000000);
+            usleep(100000);
         }
         mCtrlUnit = pCu;
         mCamHw = pCh;
@@ -156,7 +156,7 @@ void TuningServer::deinit()
         dlclose(mLibUvcApp);
         mLibUvcApp = NULL;
         property_set("sys.usb.config", "none");
-        usleep(3000000);
+        usleep(300000);
         property_set("sys.usb.config", "adb");
     }
 }
@@ -225,13 +225,13 @@ void TuningServer::get_exposure(CameraMetadata &uvcCamMeta)
     entry = uvcCamMeta.find(ANDROID_SENSOR_SENSITIVITY);
     if (!entry.count)
         return;
-    float gain = (float)(entry.data.i32[0] / 100);
+    float gain = (float)(entry.data.i32[0] / 100.0f);
     if (mCurGain != gain)
         mCurGain = gain;
     entry = uvcCamMeta.find(ANDROID_SENSOR_EXPOSURE_TIME);
     if (!entry.count)
         return;
-    float time = (float)(entry.data.i64[0] / 1e6);
+    float time = (float)(entry.data.i64[0] / 1000000.0f);
 
     if (mCurTime != time)
         mCurTime = time;
