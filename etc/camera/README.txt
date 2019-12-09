@@ -27,6 +27,7 @@ camera3_profiles.xml
   -- section "Hal_tuning_RKISP1"
      <graphSettingsFile> /* specify the camera graph settings xml file */
      <iqTuningFile> /* specify the iq xml if RAW sensor is used */
+     <forceAutoGenAndroidMetas> /* enable auto generate mode or not */
   -- section "Sensor_info_RKISP1"
      <sensorType> /* value is SENSOR_TYPE_SOC or SENSOR_TYPE_RAW */
   -- section "MediaCtl_elements_RKISP1"
