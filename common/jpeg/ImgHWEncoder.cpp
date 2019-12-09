@@ -32,6 +32,8 @@ ImgHWEncoder::ImgHWEncoder(int cameraid) :
     mCameraId(cameraid),
     mPool(NULL)
 {
+    memset(sMaker, 0, sizeof(sMaker));
+    memset(sModel, 0, sizeof(sModel));
     LOGI("@%s enter", __FUNCTION__);
 }
 
@@ -72,8 +74,8 @@ void ImgHWEncoder::fillRkExifInfo(RkExifInfo &exifInfo, exif_attribute_t* exifAt
 
     property_get("ro.product.manufacturer", maker_value, "rockchip");
     property_get("ro.product.model", model_value, "rockchip_mid");
-    strcpy(sMaker, maker_value);
-    strcpy(sModel, model_value);
+    memcpy(sMaker, maker_value, strlen(maker_value));
+    memcpy(sModel, model_value, strlen(model_value));
     exifInfo.maker = sMaker;
     exifInfo.makerchars = ALIGN(strlen(sMaker),4);  //gallery can't get the maker if maker value longer than 4byte
     exifInfo.modelstr = sModel;
@@ -191,7 +193,7 @@ status_t ImgHWEncoder::encodeSync(EncodePackage & package)
     int quality = exifMeta->mJpegSetting.jpegQuality;
     int thumbquality = exifMeta->mJpegSetting.jpegThumbnailQuality;
 
-    ALOGD("@%s %d: in buffer fd:%d, vir_addr:%p, out buffer fd:%d, vir_addr:%p", __FUNCTION__, __LINE__,
+    LOGI("@%s %d: in buffer fd:%d, vir_addr:%p, out buffer fd:%d, vir_addr:%p", __FUNCTION__, __LINE__,
          srcBuf->dmaBufFd(), srcBuf->data(),
          destBuf->dmaBufFd(), destBuf->data());
 
