@@ -1190,7 +1190,6 @@ status_t CameraHWInfo::findAttachedSubdevs(const std::string &mcPath,
 
     LOGI("@%s", __FUNCTION__);
 
-    drv_info.mFlashNum = 0;
 
     int fd = open(mcPath.c_str(), O_RDONLY);
     if (fd == -1) {
@@ -1369,6 +1368,7 @@ status_t CameraHWInfo::findMediaControllerSensors(const std::string &mcPath)
                 SensorDriverDescriptor drvInfo;
                 drvInfo.mSensorName = entity.name;
                 drvInfo.mSensorDevType = SENSOR_DEVICE_MC;
+                drvInfo.mFlashNum = 0;;
 
                 unsigned major = entity.v4l.major;
                 unsigned minor = entity.v4l.minor;
