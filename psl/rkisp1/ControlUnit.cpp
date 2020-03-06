@@ -815,14 +815,30 @@ ControlUnit::handleNewRequest(Message &msg)
 status_t
 ControlUnit::processSoCSettings(const CameraMetadata *settings)
 {
-    // fill target fps range, it needs to be proper in results anyway
-    camera_metadata_ro_entry entry =
-        settings->find(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
-    if (entry.count == 2) {
+	uint8_t reqTemplate;
+	camera_metadata_ro_entry entry;
+
+	//# ANDROID_METADATA_Dynamic android.control.captureIntent copied
+	entry = settings->find(ANDROID_CONTROL_CAPTURE_INTENT);
+	if (entry.count == 1) {
+		reqTemplate = entry.data.u8[0];
+		LOGD("%s:%d reqTemplate(%d)!\n ", __FUNCTION__, __LINE__, reqTemplate);
+	}
+
+	// fill target fps range, it needs to be proper in results anyway
+	entry = settings->find(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
+	if (entry.count == 2) {
+	   int32_t minFps = entry.data.i32[0];
        int32_t maxFps = entry.data.i32[1];
+
        // set to driver
-       if (mSensorSubdev.get())
-           mSensorSubdev->setFramerate(0, maxFps);
+       LOGD("%s:%d enter: minFps= %d maxFps = %d!\n ", __FUNCTION__, __LINE__, minFps, maxFps);
+		if(reqTemplate != ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT) {
+		    //case ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW:
+		    //case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD:
+			if (mSensorSubdev.get())
+				mSensorSubdev->setFramerate(0, maxFps);
+       }
     }
 
     if (mSocCamFlashCtrUnit.get()) {
