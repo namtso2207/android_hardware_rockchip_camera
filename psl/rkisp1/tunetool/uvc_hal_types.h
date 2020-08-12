@@ -18,7 +18,7 @@
 
 #define _VERSION_(a,b,c) (((a)<<16)+((b)<<8)+(c))
 
-#define UVC_HAL_VERSION           _VERSION_(1, 0x0, 0)
+#define UVC_HAL_VERSION           _VERSION_(1, 0x0, 1)
 
 
 enum UvcCmd{
