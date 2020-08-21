@@ -15,34 +15,34 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "RKISP1CameraHw"
+#define LOG_TAG "RKISP2CameraHw"
 
-#include "RKISP1CameraHw.h"
+#include "RKISP2CameraHw.h"
 #include "LogHelper.h"
 #include "CameraMetadataHelper.h"
 #include "RequestThread.h"
 #include "HwStreamBase.h"
 #include "PlatformData.h"
-#include "ImguUnit.h"
-#include "ControlUnit.h"
-#include "PSLConfParser.h"
-#include "TuningServer.h"
+#include "RKISP2ImguUnit.h"
+#include "RKISP2ControlUnit.h"
+#include "RKISP2PSLConfParser.h"
+// #include "TuningServer.h"
 
 namespace android {
 namespace camera2 {
 
-static const uint8_t DEFAULT_PIPELINE_DEPTH = 4;
-
-#ifdef CAMERA_RKISP1_SUPPORT
-
 // Camera factory
 ICameraHw *CreatePSLCamera(int cameraId) {
-    return new RKISP1CameraHw(cameraId);
+    return new rkisp2::RKISP2CameraHw(cameraId);
 }
 
-#endif
+namespace rkisp2 {
 
-RKISP1CameraHw::RKISP1CameraHw(int cameraId):
+static const uint8_t DEFAULT_PIPELINE_DEPTH = 4;
+
+
+
+RKISP2CameraHw::RKISP2CameraHw(int cameraId):
         mCameraId(cameraId),
         mConfigChanged(true),
         mStaticMeta(nullptr),
@@ -57,27 +57,30 @@ RKISP1CameraHw::RKISP1CameraHw(int cameraId):
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
 }
 
-RKISP1CameraHw::~RKISP1CameraHw()
+RKISP2CameraHw::~RKISP2CameraHw()
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     deInit();
 }
 
 status_t
-RKISP1CameraHw::init()
+RKISP2CameraHw::init()
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     status_t status = NO_ERROR;
 
-    std::string sensorMediaDevice = PSLConfParser::getSensorMediaDevice(mCameraId);
+    std::string sensorMediaDevice = RKISP2PSLConfParser::getSensorMediaDevice(mCameraId);
+
     mMediaCtl = std::make_shared<MediaController>(sensorMediaDevice.c_str());
+
     status = mMediaCtl->init();
     if (status != NO_ERROR) {
         LOGE("Error initializing Media Controller");
         return status;
     }
 
-    std::string imguMediaDevice = PSLConfParser::getImguMediaDevice(mCameraId);
+    std::string imguMediaDevice = RKISP2PSLConfParser::getImguMediaDevice(mCameraId);
+    imguMediaDevice = sensorMediaDevice;
     if (sensorMediaDevice == imguMediaDevice) {
         LOGI("Using sensor media device as imgu media device");
         mImguMediaCtl = mMediaCtl;
@@ -93,9 +96,9 @@ RKISP1CameraHw::init()
 
     mGCM.setMediaCtl(mMediaCtl);
 
-    mImguUnit = new ImguUnit(mCameraId, mGCM, mImguMediaCtl);
+    mImguUnit = new RKISP2ImguUnit(mCameraId, mGCM, mImguMediaCtl);
 
-    mControlUnit = new ControlUnit(mImguUnit,
+    mControlUnit = new RKISP2ControlUnit(mImguUnit,
                                    mCameraId,
                                    mGCM,
                                    mMediaCtl);
@@ -105,10 +108,10 @@ RKISP1CameraHw::init()
         return status;
     }
 
-    mTuningServer = TuningServer::GetInstance();
-    if(mTuningServer) {
-        mTuningServer->init(mControlUnit, this, mCameraId);
-    }
+    // mTuningServer = TuningServer::GetInstance();
+    // if(mTuningServer) {
+    //     mTuningServer->init(mControlUnit, this, mCameraId);
+    // }
 
     // Register ControlUnit as a listener to capture events
     status = mImguUnit->attachListener(mControlUnit);
@@ -127,7 +130,7 @@ RKISP1CameraHw::init()
 }
 
 void
-RKISP1CameraHw::deInit()
+RKISP2CameraHw::deInit()
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     if (mImguUnit) {
@@ -144,8 +147,8 @@ RKISP1CameraHw::deInit()
         mImguUnit = nullptr;
     }
 
-    //ControlUnit destruct function will release ProcUnitSettingsPool
-    //and there are still ~shared_ptr<ProcUnitSettings> in ImguUnit destruct
+    //ControlUnit destruct function will release RKISP2ProcUnitSettingsPool
+    //and there are still ~shared_ptr<RKISP2ProcUnitSettings> in ImguUnit destruct
     //function and it will cause crash, so delete ControlUnit after ImguUnit
     if (mControlUnit) {
         delete mControlUnit;
@@ -162,20 +165,20 @@ RKISP1CameraHw::deInit()
         mStaticMeta = nullptr;
     }
 
-    mTuningServer = TuningServer::GetInstance();
-    if(mTuningServer) {
-        mTuningServer->deinit();
-    }
+    // mTuningServer = TuningServer::GetInstance();
+    // if(mTuningServer) {
+    //     mTuningServer->deinit();
+    // }
 }
 
 const camera_metadata_t *
-RKISP1CameraHw::getDefaultRequestSettings(int type)
+RKISP2CameraHw::getDefaultRequestSettings(int type)
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     return PlatformData::getDefaultMetadata(mCameraId, type);
 }
 
-status_t RKISP1CameraHw::checkStreamSizes(std::vector<camera3_stream_t*> &activeStreams)
+status_t RKISP2CameraHw::checkStreamSizes(std::vector<camera3_stream_t*> &activeStreams)
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
 
@@ -219,7 +222,7 @@ status_t RKISP1CameraHw::checkStreamSizes(std::vector<camera3_stream_t*> &active
     return OK;
 }
 
-status_t RKISP1CameraHw::checkStreamRotation(const std::vector<camera3_stream_t*> activeStreams)
+status_t RKISP2CameraHw::checkStreamRotation(const std::vector<camera3_stream_t*> activeStreams)
 {
 #ifdef CHROME_BOARD
     int stream_crop_rotate_scale_degrees = -1;
@@ -265,7 +268,7 @@ status_t RKISP1CameraHw::checkStreamRotation(const std::vector<camera3_stream_t*
     return OK;
 }
 
-int64_t RKISP1CameraHw::getMinFrameDurationNs(camera3_stream_t* stream) {
+int64_t RKISP2CameraHw::getMinFrameDurationNs(camera3_stream_t* stream) {
     CheckError(stream == NULL, -1, "@%s,  invalid stream", __FUNCTION__);
 
     const int STREAM_DURATION_SIZE = 4;
@@ -290,7 +293,7 @@ int64_t RKISP1CameraHw::getMinFrameDurationNs(camera3_stream_t* stream) {
 }
 
 camera3_stream_t*
-RKISP1CameraHw::findStreamForStillCapture(const std::vector<camera3_stream_t*>& streams)
+RKISP2CameraHw::findStreamForStillCapture(const std::vector<camera3_stream_t*>& streams)
 {
     static const int64_t stillCaptureCaseThreshold = 33400000LL; // 33.4 ms
     camera3_stream_t* jpegStream = nullptr;
@@ -322,7 +325,7 @@ RKISP1CameraHw::findStreamForStillCapture(const std::vector<camera3_stream_t*>& 
 }
 
 void
-RKISP1CameraHw::checkNeedReconfig(UseCase newUseCase, std::vector<camera3_stream_t*> &activeStreams)
+RKISP2CameraHw::checkNeedReconfig(UseCase newUseCase, std::vector<camera3_stream_t*> &activeStreams)
 {
     uint32_t lastPathSize = 0, pathSize = 0;
     uint32_t lastSensorSize = 0, sensorSize = 0;
@@ -340,7 +343,7 @@ RKISP1CameraHw::checkNeedReconfig(UseCase newUseCase, std::vector<camera3_stream
     if (mConfigChanged)
         return ;
 
-    const MediaCtlConfig* imgu_ctl = mGCM.getMediaCtlConfig(IStreamConfigProvider::IMGU_COMMON);
+    const MediaCtlConfig* imgu_ctl = mGCM.getMediaCtlConfig(RKISP2IStreamConfigProvider::IMGU_COMMON);
     if (imgu_ctl->mVideoNodes[0].name.find("rkcif") != std::string::npos) {
         LOGI("@%s : rkcif device, no need reconifg when sensor output size does not change", __FUNCTION__);
         mConfigChanged = false;
@@ -354,7 +357,7 @@ RKISP1CameraHw::checkNeedReconfig(UseCase newUseCase, std::vector<camera3_stream
 }
 
 status_t
-RKISP1CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
+RKISP2CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
                             uint32_t operation_mode)
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
@@ -401,7 +404,7 @@ RKISP1CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
             mStreamsStill.push_back(activeStreams[i]);
         } else if (stillStream) {
             // always insert BLOB as fisrt stream if exists
-            LOGI("%s: find still stream %dx%d, 0x%x", __FUNCTION__, stillStream->width,
+            ALOGD("%s: find still stream %dx%d, 0x%x", __FUNCTION__, stillStream->width,
                   stillStream->height, stillStream->format);
             mStreamsStill.insert(mStreamsStill.begin(), stillStream);
         }
@@ -412,7 +415,7 @@ RKISP1CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
         mUseCase = USECASE_STILL;
     }
 
-    LOGI("%s: select usecase: %s, video/still stream num: %zu/%zu", __FUNCTION__,
+    ALOGE("%s: select usecase: %s, video/still stream num: %zu/%zu", __FUNCTION__,
             mUseCase ? "USECASE_VIDEO" : "USECASE_STILL", mStreamsVideo.size(), mStreamsStill.size());
     status = doConfigureStreams(mUseCase, operation_mode, ANDROID_SENSOR_TEST_PATTERN_MODE_OFF);
 
@@ -420,7 +423,7 @@ RKISP1CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
 }
 
 status_t
-RKISP1CameraHw::bindStreams(std::vector<CameraStreamNode *> activeStreams)
+RKISP2CameraHw::bindStreams(std::vector<CameraStreamNode *> activeStreams)
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     status_t status = NO_ERROR;
@@ -439,7 +442,7 @@ RKISP1CameraHw::bindStreams(std::vector<CameraStreamNode *> activeStreams)
 }
 
 status_t
-RKISP1CameraHw::processRequest(Camera3Request* request, int inFlightCount)
+RKISP2CameraHw::processRequest(Camera3Request* request, int inFlightCount)
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     if (inFlightCount > mPipelineDepth) {
@@ -497,7 +500,7 @@ RKISP1CameraHw::processRequest(Camera3Request* request, int inFlightCount)
     return status;
 }
 
-void RKISP1CameraHw::sendTuningDumpCmd(int w, int h)
+void RKISP2CameraHw::sendTuningDumpCmd(int w, int h)
 {
     if(w != mFakeRawStream.width || h != mFakeRawStream.height)
         mTuningSizeChanged = true;
@@ -505,7 +508,7 @@ void RKISP1CameraHw::sendTuningDumpCmd(int w, int h)
     mFakeRawStream.height = h;
 }
 
-RKISP1CameraHw::UseCase RKISP1CameraHw::checkUseCase(Camera3Request* request)
+RKISP2CameraHw::UseCase RKISP2CameraHw::checkUseCase(Camera3Request* request)
 {
 #if 0
     ////////////////////////////////////////////////////////
@@ -556,7 +559,7 @@ RKISP1CameraHw::UseCase RKISP1CameraHw::checkUseCase(Camera3Request* request)
     return USECASE_VIDEO;
 }
 
-status_t RKISP1CameraHw::getTestPatternMode(Camera3Request* request, int32_t* testPatternMode)
+status_t RKISP2CameraHw::getTestPatternMode(Camera3Request* request, int32_t* testPatternMode)
 {
     const CameraMetadata *reqSetting = request->getSettings();
     CheckError(reqSetting == nullptr, UNKNOWN_ERROR, "no settings in request - BUG");
@@ -576,7 +579,7 @@ status_t RKISP1CameraHw::getTestPatternMode(Camera3Request* request, int32_t* te
     return NO_ERROR;
 }
 
-status_t RKISP1CameraHw::doConfigureStreams(UseCase newUseCase,
+status_t RKISP2CameraHw::doConfigureStreams(UseCase newUseCase,
                                   uint32_t operation_mode, int32_t testPatternMode)
 {
     PERFORMANCE_ATRACE_CALL();
@@ -595,7 +598,7 @@ status_t RKISP1CameraHw::doConfigureStreams(UseCase newUseCase,
         streams.push_back(&mFakeRawStream);
     }
 
-    LOGI("%s: select usecase: %s, stream nums: %zu", __FUNCTION__,
+    ALOGE("%s: select usecase: %s, stream nums: %zu", __FUNCTION__,
             newUseCase == USECASE_VIDEO ? "USECASE_VIDEO" :
             newUseCase == USECASE_STILL ? "USECASE_STILL" : "USECASE_TUNING",
             streams.size());
@@ -614,9 +617,9 @@ status_t RKISP1CameraHw::doConfigureStreams(UseCase newUseCase,
        next stream config. */
     // mImguUnit->flush() moves to the controlunit for sync
     /* mImguUnit->flush(); */
-    mControlUnit->flush(!mConfigChanged ? ControlUnit::FLUSH_FOR_NOCHANGE :
-                        newUseCase == USECASE_STILL ? ControlUnit::FLUSH_FOR_STILLCAP :
-                        ControlUnit::FLUSH_FOR_PREVIEW);
+    mControlUnit->flush(!mConfigChanged ? RKISP2ControlUnit::FLUSH_FOR_NOCHANGE :
+                        newUseCase == USECASE_STILL ? RKISP2ControlUnit::FLUSH_FOR_STILLCAP :
+                        RKISP2ControlUnit::FLUSH_FOR_PREVIEW);
 
     status = mImguUnit->configStreams(streams, mConfigChanged);
     if (status != NO_ERROR) {
@@ -629,25 +632,25 @@ status_t RKISP1CameraHw::doConfigureStreams(UseCase newUseCase,
         LOGE("Unable to configure stream for controlunit");
         return status;
     }
-
+    mGCM.dumpStreamConfig(streams);
     return mImguUnit->configStreamsDone();
 }
 
 status_t
-RKISP1CameraHw::flush()
+RKISP2CameraHw::flush()
 {
     return NO_ERROR;
 }
 
 void
-RKISP1CameraHw::registerErrorCallback(IErrorCallback* errCb)
+RKISP2CameraHw::registerErrorCallback(IErrorCallback* errCb)
 {
     if (mImguUnit)
         mImguUnit->registerErrorCallback(errCb);
 }
 
 void
-RKISP1CameraHw::dump(int fd)
+RKISP2CameraHw::dump(int fd)
 {
     UNUSED(fd);
 }
@@ -660,7 +663,7 @@ RKISP1CameraHw::dump(int fd)
  * every time we need them. This is more efficient since find() is not cheap
  */
 status_t
-RKISP1CameraHw::initStaticMetadata(void)
+RKISP2CameraHw::initStaticMetadata(void)
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
 
@@ -695,5 +698,6 @@ RKISP1CameraHw::initStaticMetadata(void)
     return status;
 }
 
+}  // namespace rkisp2
 }  // namespace camera2
 }  // namespace android

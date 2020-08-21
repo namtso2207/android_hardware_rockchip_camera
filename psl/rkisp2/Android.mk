@@ -12,36 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PSLSRC = \
-    psl/rkisp1/GraphConfigManager.cpp \
-    psl/rkisp1/PSLConfParser.cpp \
-    psl/rkisp1/RKISP1CameraCapInfo.cpp \
-    psl/rkisp1/GraphConfig.cpp \
-    psl/rkisp1/RKISP1Common.cpp \
-    psl/rkisp1/RKISP1CameraHw.cpp \
-    psl/rkisp1/ControlUnit.cpp \
-    psl/rkisp1/ImguUnit.cpp \
-    psl/rkisp1/SettingsProcessor.cpp \
-    psl/rkisp1/Metadata.cpp \
-    psl/rkisp1/tasks/ExecuteTaskBase.cpp \
-    psl/rkisp1/tasks/ITaskEventSource.cpp \
-    psl/rkisp1/tasks/ICaptureEventSource.cpp \
-    psl/rkisp1/tasks/ITaskEventListener.cpp \
-    psl/rkisp1/tasks/JpegEncodeTask.cpp \
-    psl/rkisp1/workers/FrameWorker.cpp \
-    psl/rkisp1/workers/OutputFrameWorker.cpp \
-    psl/rkisp1/workers/InputFrameWorker.cpp \
-    psl/rkisp1/workers/PostProcessPipeline.cpp \
-    psl/rkisp1/MediaCtlHelper.cpp \
-    psl/rkisp1/tunetool/TuningServer.cpp \
+PSLSRC += \
+    psl/rkisp2/RKISP2GraphConfigManager.cpp \
+    psl/rkisp2/RKISP2PSLConfParser.cpp \
+    psl/rkisp2/RKISP2CameraCapInfo.cpp \
+    psl/rkisp2/RKISP2CtrlLoop.cpp \
+    psl/rkisp2/RKISP2GraphConfig.cpp \
+    psl/rkisp2/RKISP2CameraHw.cpp \
+    psl/rkisp2/RKISP2ControlUnit.cpp \
+    psl/rkisp2/RKISP2ImguUnit.cpp \
+    psl/rkisp2/RKISP2SettingsProcessor.cpp \
+    psl/rkisp2/RKISP2Metadata.cpp \
+    psl/rkisp2/tasks/RKISP2ExecuteTaskBase.cpp \
+    psl/rkisp2/tasks/RKISP2ITaskEventSource.cpp \
+    psl/rkisp2/tasks/RKISP2ICaptureEventSource.cpp \
+    psl/rkisp2/tasks/RKISP2ITaskEventListener.cpp \
+    psl/rkisp2/tasks/RKISP2JpegEncodeTask.cpp \
+    psl/rkisp2/workers/RKISP2FrameWorker.cpp \
+    psl/rkisp2/workers/RKISP2OutputFrameWorker.cpp \
+    psl/rkisp2/workers/RKISP2InputFrameWorker.cpp \
+    psl/rkisp2/workers/RKISP2PostProcessPipeline.cpp \
+    psl/rkisp2/RKISP2MediaCtlHelper.cpp \
     common/platformdata/gc/FormatUtils.cpp \
-    psl/rkisp1/RkCtrlLoop.cpp \
+    psl/rkisp1/RKISP1Common.cpp \
     psl/CameraBuffer.cpp \
     psl/HwStreamBase.cpp \
     psl/TaskThreadBase.cpp \
     psl/NodeTypes.cpp \
     psl/RgaCropScale.cpp
-
 
 STRICTED_CPPFLAGS := \
                     -Wno-unused-parameter \
@@ -50,14 +48,16 @@ STRICTED_CPPFLAGS := \
                     -fstack-protector -fPIE -fPIC -D_FORTIFY_SOURCE=2 \
                     -Wformat -Wformat-security
 
-PSLCPPFLAGS = \
+PSLCPPFLAGS += \
     $(STRICTED_CPPFLAGS) \
     -I$(LOCAL_PATH)/common/platformdata/metadataAutoGen/6.0.1 \
     -I$(LOCAL_PATH)/psl \
     -I$(LOCAL_PATH)/psl/rkisp1 \
     -I$(LOCAL_PATH)/psl/rkisp1/tunetool \
+    -I$(LOCAL_PATH)/psl/rkisp1/tasks \
+    -I$(LOCAL_PATH)/psl/rkisp2 \
     -I$(LOCAL_PATH)/include \
     -I$(LOCAL_PATH)/include/ia_imaging \
     -I$(LOCAL_PATH)/include/rk_imaging \
-    -DCAMERA_RKISP1_SUPPORT \
+    -DCAMERA_RKISP2_SUPPORT \
     -DHAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_RK=0x10F

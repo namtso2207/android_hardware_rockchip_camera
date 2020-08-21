@@ -28,7 +28,11 @@
 #include "IPSLConfParser.h"
 #include "Utils.h"
 
+#ifdef CAMERA_RKISP2_SUPPORT
+#include "RKISP2PSLConfParser.h"
+#else
 #include "PSLConfParser.h"
+#endif
 
 /**
  * Platform specific implementation
@@ -62,9 +66,11 @@ status_t CameraProfiles::init()
         LOGE("CameraHWInfo is nullptr");
         return BAD_VALUE;
     }
-
+#ifdef CAMERA_RKISP2_SUPPORT
+    mCameraCommon->init(rkisp2::RKISP2PSLConfParser::getSensorMediaDevicePath());
+#else
     mCameraCommon->init(PSLConfParser::getSensorMediaDevicePath());
-
+#endif
     // Assumption: Driver enumeration order will match the CameraId
     // CameraId in camera_profiles.xml. Main camera is always at
     // index 0, front camera at index 1.
@@ -88,13 +94,21 @@ void CameraProfiles::createConfParser()
     for (const auto &cameraIdToCameraInfo : mCameraIdToCameraInfo) {
         // get psl parser
         CameraInfo *info = cameraIdToCameraInfo.second;
+#ifdef CAMERA_RKISP2_SUPPORT
+        info->parser = rkisp2::RKISP2PSLConfParser::getInstance(mXmlConfigName, mSensorNames);
+#else
         info->parser = PSLConfParser::getInstance(mXmlConfigName, mSensorNames);
+#endif
     }
 }
 
 void CameraProfiles::destroyConfParser()
 {
+#ifdef CAMERA_RKISP2_SUPPORT
+    rkisp2::RKISP2PSLConfParser::deleteInstance();
+#else
     PSLConfParser::deleteInstance();
+#endif
 }
 
 int CameraProfiles::getXmlCameraId(int cameraId) const
@@ -1309,6 +1323,8 @@ CameraHwType CameraProfiles::getCameraHwforId(int cameraId)
 
     if (hwType == "SUPPORTED_HW_RKISP1") {
         return SUPPORTED_HW_RKISP1;
+    } else if (hwType == "SUPPORTED_HW_RKISP2") {
+        return SUPPORTED_HW_RKISP2;
     } else
         LOGE("ERROR: Camera HW type wrong in xml");
         return SUPPORTED_HW_UNKNOWN;
