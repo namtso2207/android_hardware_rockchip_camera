@@ -676,6 +676,9 @@ RKISP2ControlUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, 
         }
         LOGD("@%s : mEnable3A :%d", __FUNCTION__, mEnable3A);
 
+        const RKISP2CameraCapInfo *cap = getRKISP2CameraCapInfo(mCameraId);
+        prepareParams.work_mode = cap->getAiqWorkingMode();
+
         if (mCtrlLoop && mEnable3A ) {
             status = mCtrlLoop->start(prepareParams);
             if (CC_UNLIKELY(status != OK)) {

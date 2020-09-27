@@ -780,6 +780,9 @@ void RKISP2PSLConfParser::handleSensorInfo(const char *name, const char **atts)
         readNvmData();
     } else if (strcmp(name, "testPattern.bayerFormat") == 0) {
         info->mTestPatternBayerFormat = atts[1];
+    } else if (strcmp(name, "aiq.workingMode") == 0) {
+        info->mWorkingMode = atts[1];
+        LOGD("element name: aiq.workMode, element value = %s", info->mWorkingMode.c_str());
     }
 }
 
@@ -819,6 +822,9 @@ void RKISP2PSLConfParser::handleRKISP2SensorInfo(const char *name, const char **
         readNvmData();
     } else if (strcmp(name, "testPattern.bayerFormat") == 0) {
         info->mTestPatternBayerFormat = atts[1];
+    } else if (strcmp(name, "aiq.workingMode") == 0) {
+        info->mWorkingMode = atts[1];
+        LOGD("element name: aiq.workMode, element value = %s", info->mWorkingMode.c_str());
     }
 }
 

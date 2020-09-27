@@ -54,6 +54,7 @@ public:
     const std::string getMediaCtlEntityName(std::string type) const;
     const std::vector<std::string> getMediaCtlEntityNames(std::string type) const;
     const std::string getMediaCtlEntityType(std::string name) const;
+    const char* getAiqWorkingMode(void) const { return mWorkingMode.c_str(); };
 
     int mSensorType;
     int mSensorFlipping;
@@ -77,6 +78,7 @@ public:
     ia_binary_data mNvmData;
     std::string mGraphSettingsFile;
     std::string mTestPatternBayerFormat;
+    std::string mWorkingMode;
 
     std::string mIqTuningFile;
     std::vector<MediaCtlElement> mMediaCtlElements;
