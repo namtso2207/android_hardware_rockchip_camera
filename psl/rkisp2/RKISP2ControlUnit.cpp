@@ -448,7 +448,6 @@ RKISP2ControlUnit::init()
              LogHelper::isDumpTypeEnable(CAMERA_DUMP_RAW));
         //return UNKNOWN_ERROR;
     }
-
     mRKISP2SettingsProcessor = new RKISP2SettingsProcessor(mCameraId);
     mRKISP2SettingsProcessor->init();
 
@@ -664,6 +663,11 @@ RKISP2ControlUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, 
 
         mEnable3A = true;
         for (auto it = activeStreams.begin(); it != activeStreams.end(); ++it) {
+            prepareParams.width = (*it)->width;
+            prepareParams.height = (*it)->height;
+            LOGD("@%s : mEnable3A :%d,  prepareParams.width*height(%dx%d).", __FUNCTION__,
+                  mEnable3A, prepareParams.width, prepareParams.height);
+
             if((*it)->format == HAL_PIXEL_FORMAT_RAW_OPAQUE &&
                !PlatformData::getCameraHWInfo()->isIspSupportRawPath()) {
                 mEnable3A = false;

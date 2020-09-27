@@ -27,6 +27,7 @@
 #include "Utils.h"
 #include "RKISP2CtrlLoop.h"
 #include "PerformanceTraces.h"
+//#include "RKISP2CameraCapInfo.h"
 
 NAMESPACE_DECLARATION {
 #if defined(ANDROID_VERSION_ABOVE_8_X)
@@ -49,11 +50,21 @@ status_t RKISP2CtrlLoop::init(const char* sensorName,
     HAL_TRACE_CALL(CAM_GLBL_DBG_INFO);
     PERFORMANCE_ATRACE_NAME("RKISP2CtrlLoop::init");
     status_t status = OK;
+    std::string entityName;
+    const char *sensorEntityName = nullptr;
+
     /* get AIQ xml path */
     const CameraCapInfo* cap = PlatformData::getCameraCapInfo(mCameraId);
+    //const RKISP2CameraCapInfo *capInfo = getRKISP2CameraCapInfo(mCameraId);
+    //PlatformData::getCameraHWInfo()->getSensorEntityName(mCameraId, entityName);
+    const CameraHWInfo* camHwInfo = PlatformData::getCameraHWInfo();
+    camHwInfo->getSensorEntityName(mCameraId, entityName);
+    sensorEntityName = entityName.c_str();
+    LOGD("@%s : sensorEntityName:%s", __FUNCTION__, sensorEntityName);
     std::string iq_file = cap->getIqTuningFile();
     std::string iq_file_path(RK_3A_TUNING_FILE_PATH);
     std::string iq_file_full_path = iq_file_path + iq_file;
+    ALOGD("@%s : iq_file_full_path:%s", __FUNCTION__, iq_file_full_path.c_str());
 #if 0
     struct stat fileInfo;
 
@@ -69,7 +80,7 @@ status_t RKISP2CtrlLoop::init(const char* sensorName,
         }
     }
 #endif
-    bool ret = (rkisp_cl_init(&mControlLoopCtx , iq_file_full_path.c_str(), cb) == 0 ? true : false);
+    bool ret = (rkisp_cl_rkaiq_init(&mControlLoopCtx , iq_file_full_path.c_str(), cb, sensorEntityName) == 0 ? true : false);
     CheckError(ret == false, UNKNOWN_ERROR, "@%s, Error in isp control loop init", __FUNCTION__);
     return status;
 }
