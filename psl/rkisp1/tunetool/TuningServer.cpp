@@ -135,7 +135,6 @@ void TuningServer::init(ControlUnit *pCu, RKISP1CameraHw* pCh, int camId)
             property_set("sys.usb.config", "none");
             usleep(300000);
             property_set("sys.usb.config", "uvc,adb");
-            usleep(100000);
         }
         mCtrlUnit = pCu;
         mCamHw = pCh;
