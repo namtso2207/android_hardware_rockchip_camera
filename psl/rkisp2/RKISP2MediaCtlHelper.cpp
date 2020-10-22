@@ -31,16 +31,20 @@ namespace rkisp2 {
 const char* STATISTICS = "3a statistics";
 const char* PARAMS = "parameters";
 
-RKISP2MediaCtlHelper::RKISP2MediaCtlHelper(std::shared_ptr<MediaController> mediaCtl,
+RKISP2MediaCtlHelper::RKISP2MediaCtlHelper(std::shared_ptr<MediaController> sensorMediaCtl,
+        std::shared_ptr<MediaController> imgMediaCtl,
         IOpenCallBack *openCallBack, bool isIMGU) :
         mOpenVideoNodeCallBack(openCallBack),
-        mMediaCtl(mediaCtl),
+        mMediaCtl(sensorMediaCtl),
+        mImgMediaCtl(imgMediaCtl),
         mMediaCtlConfig(nullptr),
         mPipeConfig(nullptr),
         mConfigedPipeType(RKISP2IStreamConfigProvider::MEDIA_TYPE_MAX_COUNT)
 {
-    if (isIMGU)
+    if (isIMGU){
         mMediaCtl->resetLinks();
+        imgMediaCtl->resetLinks();
+    }
 }
 
 RKISP2MediaCtlHelper::~RKISP2MediaCtlHelper()
@@ -105,15 +109,26 @@ status_t RKISP2MediaCtlHelper::configure(RKISP2IStreamConfigProvider &graphConfi
         return status;
     }
 
+    status = mImgMediaCtl->getMediaDevInfo(deviceInfo);
+    if (status != NO_ERROR) {
+        LOGE("Error getting device info");
+        return status;
+    }
+
     // setting all the Link necessary for the media controller.
     for (unsigned int i = 0; i < mMediaCtlConfig->mLinkParams.size(); i++) {
         MediaCtlLinkParams pipeLink = mMediaCtlConfig->mLinkParams[i];
         status = mMediaCtl->configureLink(pipeLink);
         if (status != NO_ERROR) {
-            LOGE("Cannot set MediaCtl links (ret = %d)", status);
-            return status;
+            status = mImgMediaCtl->configureLink(pipeLink);
+            if (status != NO_ERROR) {
+                LOGE("Cannot set MediaCtl links (ret = %d)", status);
+                return status;
+            }
         }
     }
+
+    
 
     // open nodes after link setup
     status = openVideoNodes();
@@ -225,9 +240,9 @@ status_t RKISP2MediaCtlHelper::configure(RKISP2IStreamConfigProvider &graphConfi
 
                     if (ctrSel.entityName.find("isp-subdev") == string::npos)
                         continue;
-                    // status = mMediaCtl->setSelection(ctrSel.entityName.c_str(), ctrSel.pad,
-                    //                                  ctrSel.target, ctrSel.top, ctrSel.left,
-                    //                                  ctrSel.width, ctrSel.height);
+                    status = mMediaCtl->setSelection(ctrSel.entityName.c_str(), ctrSel.pad,
+                                                     ctrSel.target, ctrSel.top, ctrSel.left,
+                                                     ctrSel.width, ctrSel.height);
                     if (status != NO_ERROR) {
                         LOGE("Cannot set subdev MediaCtl format selection (ret = %d)", status);
                         return status;
@@ -242,8 +257,11 @@ status_t RKISP2MediaCtlHelper::configure(RKISP2IStreamConfigProvider &graphConfi
 
                     status = mMediaCtl->getMediaEntity(entity, vidSel.entityName.c_str());
                     if (status != NO_ERROR) {
-                        LOGE("Cannot get media entity (ret = %d)", status);
-                        return status;
+                        status = mImgMediaCtl->getMediaEntity(entity, vidSel.entityName.c_str());
+                        if (status != NO_ERROR) {
+                            LOGE("Cannot get media entity (ret = %d)", status);
+                            return status;
+                        }
                     }
                     status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&)vNode);
                     if (status != NO_ERROR) {
@@ -263,12 +281,15 @@ status_t RKISP2MediaCtlHelper::configure(RKISP2IStreamConfigProvider &graphConfi
                     MediaCtlFormatParams pipeFormat = mMediaCtlConfig->mFormatParams[it.index];
                     std::shared_ptr<MediaEntity> entity = nullptr;
                     ALOGE("fmt ...%s",pipeFormat.entityName.c_str());
-                    if (strstr(pipeFormat.entityName.c_str(),"rkisp_mainpath")||strstr(pipeFormat.entityName.c_str(),"rkisp_selfpath")||strstr(pipeFormat.entityName.c_str(),"bypass")||strstr(pipeFormat.entityName.c_str(),"rkispp_scale0"))
+                    if (strstr(pipeFormat.entityName.c_str(),"rkisp_mainpath")||strstr(pipeFormat.entityName.c_str(),"rkisp_selfpath")||strstr(pipeFormat.entityName.c_str(),"bypass")||strstr(pipeFormat.entityName.c_str(),"rkispp_scale"))
                     {
                     status = mMediaCtl->getMediaEntity(entity, pipeFormat.entityName.c_str());
                     if (status != NO_ERROR) {
-                        LOGE("Getting MediaEntity \"%s\" failed", pipeFormat.entityName.c_str());
-                        return status;
+                        status = mImgMediaCtl->getMediaEntity(entity, pipeFormat.entityName.c_str());
+                        if (status != NO_ERROR) {
+                            LOGE("Getting MediaEntity \"%s\" failed", pipeFormat.entityName.c_str());
+                            continue;
+                        }
                     }
                     pipeFormat.field = 0;
                     //TODO: need align, zyc ?
@@ -279,8 +300,11 @@ status_t RKISP2MediaCtlHelper::configure(RKISP2IStreamConfigProvider &graphConfi
 
                     status = mMediaCtl->setFormat(pipeFormat);
                     if (status != NO_ERROR) {
-                        LOGE("Cannot set MediaCtl format (ret = %d)", status);
-                        return status;
+                        status = mImgMediaCtl->setFormat(pipeFormat);
+                        if (status != NO_ERROR) {
+                            LOGE("Cannot set MediaCtl format (ret = %d)", status);
+                            return status;
+                        }
                     }
 
                     // get the capture pipe output format
@@ -300,8 +324,13 @@ status_t RKISP2MediaCtlHelper::configure(RKISP2IStreamConfigProvider &graphConfi
                             pipeControl.controlId, pipeControl.value,
                             pipeControl.controlName.c_str());
                     if (status != NO_ERROR) {
-                        LOGE("Cannot set control (ret = %d)", status);
-                        return status;
+                        if (status != NO_ERROR) {
+                            status = mImgMediaCtl->setControl(pipeControl.entityName.c_str(),
+                                pipeControl.controlId, pipeControl.value,
+                                pipeControl.controlName.c_str());
+                            LOGE("Cannot set control (ret = %d)", status);
+                            return status;
+                        }
                     }
                 }
                 break;
@@ -335,8 +364,11 @@ status_t RKISP2MediaCtlHelper::configurePipe(RKISP2IStreamConfigProvider &graphC
             pipeLink.enable = false;
             status = mMediaCtl->configureLink(pipeLink);
             if (status != NO_ERROR) {
-                LOGE("Cannot set MediaCtl links (ret = %d)", status);
-                return status;
+                status = mImgMediaCtl->configureLink(pipeLink);
+                if (status != NO_ERROR) {
+                    LOGE("Cannot set MediaCtl links (ret = %d)", status);
+                    return status;
+                }
             }
         }
     }
@@ -354,8 +386,11 @@ status_t RKISP2MediaCtlHelper::configurePipe(RKISP2IStreamConfigProvider &graphC
         MediaCtlLinkParams pipeLink = config->mLinkParams[i];
         status = mMediaCtl->configureLink(pipeLink);
         if (status != NO_ERROR) {
-            LOGE("Cannot set MediaCtl links (ret = %d)", status);
-            return status;
+            status = mImgMediaCtl->configureLink(pipeLink);
+            if (status != NO_ERROR) {
+                LOGE("Cannot set MediaCtl links (ret = %d)", status);
+                return status;
+            }
         }
     }
     if (!resetFormat)
@@ -369,8 +404,11 @@ status_t RKISP2MediaCtlHelper::configurePipe(RKISP2IStreamConfigProvider &graphC
 
         status = mMediaCtl->setFormat(pipeFormat);
         if (status != NO_ERROR) {
-            LOGE("Cannot set MediaCtl format (ret = %d)", status);
-            return status;
+            status = mImgMediaCtl->setFormat(pipeFormat);
+            if (status != NO_ERROR) {
+                LOGE("Cannot set MediaCtl format (ret = %d)", status);
+                return status;
+            }
         }
     }
     return OK;
@@ -407,15 +445,25 @@ status_t RKISP2MediaCtlHelper::openVideoNode(const char *entityName, NodeTypes i
 
     if (entityName != nullptr) {
         status = mMediaCtl->getMediaEntity(entity, entityName);
-        if (status != NO_ERROR) {
-            LOGE("Getting MediaEntity \"%s\" failed", entityName);
-            return status;
-        }
-
-        status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) videoNode);
-        if (status != NO_ERROR) {
-            LOGE("Error opening device \"%s\"", entityName);
-            return status;
+        if (status == NO_ERROR) {
+            //LOGE("Getting MediaEntity \"%s\" failed", entityName);
+            //return status;
+            status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) videoNode);
+            if (status != NO_ERROR) {
+                LOGE("Error opening device \"%s\"", entityName);
+                return status;
+            }
+        }else{
+            status = mImgMediaCtl->getMediaEntity(entity, entityName);
+            if (status != NO_ERROR) {
+                LOGE("Getting MediaEntity \"%s\" failed", entityName);
+                return status;
+            }
+            status = entity->getDevice((std::shared_ptr<V4L2DeviceBase>&) videoNode);
+            if (status != NO_ERROR) {
+                LOGE("Error opening device \"%s\"", entityName);
+                return status;
+            }
         }
 
         mConfiguredNodes.push_back(videoNode);
@@ -460,10 +508,12 @@ status_t RKISP2MediaCtlHelper::resetLinks(const MediaCtlConfig *config)
         MediaCtlLinkParams pipeLink = config->mLinkParams[i];
         pipeLink.enable = false;
         status = mMediaCtl->configureLink(pipeLink);
-
         if (status != NO_ERROR) {
-            LOGE("Cannot reset MediaCtl link (ret = %d)", status);
-            return status;
+            status = mImgMediaCtl->configureLink(pipeLink);
+            if (status != NO_ERROR) {
+                LOGE("Cannot reset MediaCtl link (ret = %d)", status);
+                return status;
+            }
         }
     }
 
