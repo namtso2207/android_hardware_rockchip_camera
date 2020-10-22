@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#ifndef _CAMERA3_HAL_RKISP1CAMERACAPINFO_H_
-#define _CAMERA3_HAL_RKISP1CAMERACAPINFO_H_
+#ifndef _CAMERA3_HAL_RKISP2CameraCapInfo_H_
+#define _CAMERA3_HAL_RKISP2CameraCapInfo_H_
 
 #include <string>
 #include <vector>
@@ -25,14 +25,12 @@
 
 namespace android {
 namespace camera2 {
+namespace rkisp2 {
 
-class GraphConfigNodes;
-
-
-class RKISP1CameraCapInfo : public CameraCapInfo {
+class RKISP2CameraCapInfo : public CameraCapInfo {
 public:
-    RKISP1CameraCapInfo(SensorType type);
-    ~RKISP1CameraCapInfo();
+    RKISP2CameraCapInfo(SensorType type);
+    ~RKISP2CameraCapInfo();
     virtual int sensorType(void) const { return mSensorType; }
     bool exposureSyncEnabled(void) const { return mExposureSync; };
     bool digiGainOnSensor(void) const { return mDigiGainOnSensor; };
@@ -81,13 +79,14 @@ public:
     std::string mTestPatternBayerFormat;
 
     std::string mIqTuningFile;
-private:
-    friend class PSLConfParser;
     std::vector<MediaCtlElement> mMediaCtlElements;
+private:
+    friend class RKISP2PSLConfParser;
 };
 
-const RKISP1CameraCapInfo * getRKISP1CameraCapInfo(int cameraId);
+const RKISP2CameraCapInfo * getRKISP2CameraCapInfo(int cameraId);
 
+} // namespace rkisp2
 } // namespace camera2
 } // namespace android
-#endif // _CAMERA3_HAL_RKISP1CAMERACAPINFO_H_
+#endif // _CAMERA3_HAL_RKISP2CameraCapInfo_H_

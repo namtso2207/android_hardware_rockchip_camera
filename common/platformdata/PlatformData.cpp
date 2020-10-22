@@ -33,7 +33,12 @@
 #include <fstream>
 #include <CameraMetadata.h>
 #include <rkisp_control_loop.h>
+#ifdef CAMERA_RKISP2_SUPPORT
+#include "RKISP2CameraCapInfo.h"
+#else
 #include "RKISP1CameraCapInfo.h"
+#endif
+
 // TODO this should come from the crl header file
 // crl is a common code module in sensor driver, which contains
 // basic functions for driver control
@@ -609,7 +614,11 @@ void PlatformData::init()
 					if (cci->sensorType() == SENSOR_TYPE_RAW) {
 						std::vector<struct FrameSize_t> tuningSize;
 						struct FrameSize_t frameSize;
+#ifdef CAMERA_RKISP2_SUPPORT
+						rkisp2::RKISP2CameraCapInfo *capInfo =  const_cast<rkisp2::RKISP2CameraCapInfo *>(static_cast<const rkisp2::RKISP2CameraCapInfo*>(cci));
+#else
 						RKISP1CameraCapInfo *capInfo =  const_cast<RKISP1CameraCapInfo *>(static_cast<const RKISP1CameraCapInfo*>(cci));
+#endif
 						frameSize.width = metadata_info[j].full_size.width;
 						frameSize.height = metadata_info[j].full_size.height;
 						tuningSize.push_back(frameSize);
@@ -1530,7 +1539,12 @@ status_t CameraHWInfo::getSensorEntityName(int32_t cameraId,
 
     string sensorName;
     sensorEntityName = "none";
+#ifdef CAMERA_RKISP2_SUPPORT
+    const rkisp2::RKISP2CameraCapInfo *cap = rkisp2::getRKISP2CameraCapInfo(cameraId);
+#else
     const RKISP1CameraCapInfo *cap = getRKISP1CameraCapInfo(cameraId);
+#endif
+
     if (!cap) {
         LOGE("Can't get Sensor name");
         return UNKNOWN_ERROR;
@@ -1673,7 +1687,11 @@ status_t CameraHWInfo::getSensorBayerPattern(int32_t cameraId,
 
 const struct SensorDriverDescriptor* CameraHWInfo::getSensorDrvDes(int32_t cameraId) const
 {
+#ifdef CAMERA_RKISP2_SUPPORT
+    const rkisp2::RKISP2CameraCapInfo *cap = rkisp2::getRKISP2CameraCapInfo(cameraId);
+#else
     const RKISP1CameraCapInfo *cap = getRKISP1CameraCapInfo(cameraId);
+#endif
 
     if (!cap) {
         LOGE("Can't get Sensor cap info !");

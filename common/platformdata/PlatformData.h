@@ -24,7 +24,11 @@
 #include <vector>
 #include "Camera3V4l2Format.h"
 #include "CameraWindow.h"
+#ifdef CAMERA_RKISP2_SUPPORT
+#include "RKISP2GraphConfigManager.h"
+#else
 #include "GraphConfigManager.h"
+#endif
 #include "Metadata.h"
 
 #define DEFAULT_ENTRY_CAP 256
@@ -102,6 +106,7 @@
 NAMESPACE_DECLARATION {
 typedef enum {
     SUPPORTED_HW_RKISP1,
+    SUPPORTED_HW_RKISP2,
     SUPPORTED_HW_UNKNOWN
 } CameraHwType;
 
@@ -170,6 +175,11 @@ enum ExtensionGroups {
     CAPABILITY_STATISTICS = 1 << 1,
     CAPABILITY_ENHANCEMENT = 1 << 2,
     CAPABILITY_DEVICE = 1 << 3,
+};
+
+struct FrameSize_t {
+    uint32_t width;
+    uint32_t height;
 };
 
 /**
@@ -263,7 +273,11 @@ public:
     virtual int sensorType(void) const = 0;
 	virtual bool getForceAutoGenAndroidMetas(void) const = 0;
     virtual const std::string& getIqTuningFile(void) const = 0;
+#ifdef CAMERA_RKISP2_SUPPORT
+    const rkisp2::GraphConfigNodes* getGraphConfigNodes() const { return mGCMNodes; }
+#else
     const GraphConfigNodes* getGraphConfigNodes() const { return mGCMNodes; }
+#endif
     virtual void setSupportTuningSizes(std::vector<struct FrameSize_t> frameSize) = 0; 
 
 protected:
@@ -288,7 +302,11 @@ protected:
      *  between both of them
      */
     std::map<int, int> mGfxHalToV4L2PixelFmtTable;
+#ifdef CAMERA_RKISP2_SUPPORT
+    rkisp2::GraphConfigNodes* mGCMNodes;
+#else
     GraphConfigNodes* mGCMNodes;
+#endif
 };
 
 class GcssKeyMap {
