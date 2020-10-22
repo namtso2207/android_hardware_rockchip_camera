@@ -23,6 +23,7 @@ using ::android::hardware::camera::common::V1_0::helper::CameraMetadata;
 #else
 #include <camera/CameraMetadata.h>
 #endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -78,6 +79,16 @@ struct rkisp_cl_prepare_params_s {
   // static metadata
   const camera_metadata_t *staticMeta;
   // TODO: sensor mode descriptor and others
+  /**
+   * The width in pixels of the buffers in this stream
+   */
+  uint32_t width;
+
+  /**
+   * The height in pixels of the buffers in this stream
+   */
+  uint32_t height;
+
 };
 
 /* A struct used to represent the new parameters set to CL
@@ -142,6 +153,19 @@ typedef struct cl_result_callback_ops {
  */
 int rkisp_cl_init(void** cl_ctx, const char* tuning_file_path,
                   const cl_result_callback_ops_t *callback_ops);
+/*
+ * Get the RKAIQ control loop context
+ * Args:
+ *    |cl_ctx|: if initialization is successful, |*cl_ctx| will be filled by
+ *              CL library.
+ *    |tuning_file_path|: tuning file used by 3A algorithm library.
+ * Returns:
+ *    -EINVAL: failed
+ *    0      : success
+ */
+int rkisp_cl_rkaiq_init(void** cl_ctx, const char* tuning_file_path,
+                  const cl_result_callback_ops_t *callback_ops,
+                  const char* sns_entity_name);
 
 /*
  * Prepare the neccesary conditions before CL running
