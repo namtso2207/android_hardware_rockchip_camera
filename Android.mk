@@ -261,8 +261,14 @@ ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 29)))
     LOCAL_CPPFLAGS += -std=c++1y
 
 ifeq ($(strip $(TARGET_BOARD_PLATFORM)),rk3368)
+ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 30)))
+LOCAL_C_INCLUDES += \
+    system/memory/libion/kernel-headers \
+    system/memory/libion/include
+else
 LOCAL_C_INCLUDES += \
     system/core/libion/original-kernel-headers
+endif
 endif
 
 endif
