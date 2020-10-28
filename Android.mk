@@ -68,9 +68,15 @@ COMMONSRC = common/SysCall.cpp \
             common/PollerThread.cpp \
             common/Utils.cpp \
             common/CommonBuffer.cpp \
-            common/camera_buffer_manager_gralloc_impl.cpp \
             common/IaAtrace.cpp \
             common/GFXFormatLinuxGeneric.cpp
+
+ifeq ($(TARGET_RK_GRALLOC_VERSION),4)
+    LOCAL_CFLAGS += -DRK_GRALLOC_4
+    COMMONSRC += common/camera_buffer_manager_gralloc4_impl.cpp
+else
+    COMMONSRC += common/camera_buffer_manager_gralloc_impl.cpp
+endif
 
 JPEGSRC = common/jpeg/ExifCreater.cpp \
           common/jpeg/EXIFMaker.cpp \
@@ -147,6 +153,7 @@ LOCAL_C_INCLUDES += \
     hardware/rockchip/jpeghw \
     hardware/rockchip/librga \
     external/libchrome \
+    external/libdrm/include/drm \
     $(LOCAL_PATH)/include/arc
 
 # API 29 -> Android 10.0
@@ -154,7 +161,8 @@ ifneq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \< 29)))
 
 ifneq (,$(filter mali-tDVx mali-G52, $(TARGET_BOARD_PLATFORM_GPU)))
 LOCAL_C_INCLUDES += \
-        hardware/rockchip/libgralloc/bifrost
+        hardware/rockchip/libgralloc/bifrost \
+        hardware/rockchip/libgralloc/bifrost/src
 endif
 
 ifneq (,$(filter mali-t860 mali-t760, $(TARGET_BOARD_PLATFORM_GPU)))
@@ -236,6 +244,7 @@ ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 26)))
 LOCAL_STATIC_LIBRARIES += android.hardware.camera.common@1.0-helper
 endif
 LOCAL_SHARED_LIBRARIES:= \
+    libbase \
     libcutils \
     libutils \
     libjpeg \
@@ -264,6 +273,30 @@ LOCAL_SHARED_LIBRARIES += \
     libsync_vendor
 endif
 
+ifeq ($(TARGET_RK_GRALLOC_VERSION),4)
+LOCAL_STATIC_LIBRARIES += \
+       libgrallocusage
+
+LOCAL_SHARED_LIBRARIES += \
+    android.hardware.graphics.allocator@2.0 \
+    android.hardware.graphics.allocator@3.0 \
+    android.hardware.graphics.allocator@4.0 \
+    android.hardware.graphics.common-ndk_platform \
+    android.hardware.graphics.common@1.2 \
+    android.hardware.graphics.mapper@2.0 \
+    android.hardware.graphics.mapper@2.1 \
+    android.hardware.graphics.mapper@3.0 \
+    android.hardware.graphics.mapper@4.0 \
+    libgralloctypes \
+    libhidlbase
+
+LOCAL_HEADER_LIBRARIES += \
+    android.hardware.graphics.common@1.2 \
+    android.hardware.graphics.common-ndk_platform \
+    android.hardware.graphics.mapper@4.0 \
+    libgralloctypes
+endif
+
 ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 26)))
     LOCAL_CFLAGS += -DANDROID_VERSION_ABOVE_8_X
 endif
@@ -274,7 +307,7 @@ ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 26)))
 endif
 ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 29)))
     LOCAL_CFLAGS += -DANDROID_VERSION_ABOVE_10_X
-    LOCAL_CPPFLAGS += -std=c++1y
+    LOCAL_CPPFLAGS += -std=c++1z
 
 ifeq ($(strip $(TARGET_BOARD_PLATFORM)),rk3368)
 ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 30)))

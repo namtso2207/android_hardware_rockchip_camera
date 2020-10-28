@@ -237,8 +237,8 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     /* mUserBuffer.release_fence = -1; */
 
     mCameraId = cameraId;
-    LOGI("@%s, mHandle:%p, mFormat:%d, mWidth:%d, mHeight:%d, mStride:%d, mSize:%d, V4l2Fmt:%s, reqId:%d",
-        __FUNCTION__, mHandle, mFormat, mWidth, mHeight, mStride, mSize, v4l2Fmt2Str(mV4L2Fmt), mRequestID);
+    LOGI("@%s, mHandle:%p, mHandlePtr:%p, mFormat:%d, mWidth:%d, mHeight:%d, mStride:%d, mSize:%d, V4l2Fmt:%s, reqId:%d",
+        __FUNCTION__, mHandle, mHandlePtr, mFormat, mWidth, mHeight, mStride, mSize, v4l2Fmt2Str(mV4L2Fmt), mRequestID);
 
     if (mHandle == nullptr) {
         LOGE("@%s: invalid buffer handle", __FUNCTION__);
@@ -247,6 +247,8 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     }
 
     int ret = registerBuffer();
+    LOGI("@%s,after register mHandle:%p, mHandlePtr:%p",__FUNCTION__, mHandle, mHandlePtr);
+
     if (ret) {
         mUserBuffer.status = CAMERA3_BUFFER_STATUS_ERROR;
         return UNKNOWN_ERROR;
@@ -372,8 +374,17 @@ status_t CameraBuffer::getFence(camera3_stream_buffer* buf)
 
 status_t CameraBuffer::registerBuffer()
 {
+#ifdef RK_GRALLOC_4
+    buffer_handle_t outbuffer;
+    int ret = mGbmBufferManager->Register(mHandle, &outbuffer);
+    if (ret == 0) {
+        mHandle = outbuffer;
+        mHandlePtr = &outbuffer;
+    }
+#else
     int ret = mGbmBufferManager->Register(mHandle);
-    if (ret) {
+#endif
+    if (ret < 0) {
         LOGE("@%s: call Register fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
         return UNKNOWN_ERROR;
     }
@@ -698,6 +709,7 @@ allocateHandleBuffer(int w,
     LOGI("%s, [wxh] = [%dx%d], format 0x%x, usage 0x%x",
           __FUNCTION__, w, h, gfxFmt, usage);
     int ret = bufManager->Allocate(w, h, gfxFmt, usage, arc::GRALLOC, &handle, &stride);
+    LOGI("Allocate handle:%p", &handle);
     if (ret != 0) {
         LOGE("Allocate handle failed! %d", ret);
         return nullptr;
@@ -750,6 +762,7 @@ creatHandlerBufferPool(int cameraId,
           __FUNCTION__, w, h, gfxFmt, usage, nums);
     for (int i = 0; i < nums; ++i) {
         ret = bufManager->Allocate(w, h, gfxFmt, usage, arc::GRALLOC, &handle, &stride);
+        LOGI("Allocate handle:%p", handle);
         if (ret != 0) {
             LOGE("Allocate handle failed! %d", ret);
             return ret;

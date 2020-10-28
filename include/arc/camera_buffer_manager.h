@@ -116,7 +116,11 @@ class EXPORTED CameraBufferManager {
   //
   // Returns:
   //    0 on success; corresponding error code on failure.
+#ifdef RK_GRALLOC_4
+  virtual int Register(buffer_handle_t buffer, buffer_handle_t* outbuffer) = 0;
+#else
   virtual int Register(buffer_handle_t buffer) = 0;
+#endif
 
   // This method is analogous to the unregister() function in Android gralloc
   // module.  After |buffer| is deregistered, calling Lock(), LockYCbCr(), or
