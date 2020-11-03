@@ -88,8 +88,19 @@ GCSSSRC = common/gcss/graph_query_manager.cpp \
           common/gcss/GCSSParser.cpp \
           common/gcss/gcss_formats.cpp
 
-#rk1126 use RKISP2CameraHw else RKISP1CameraHw
-ifeq ($(strip $(TARGET_BOARD_PLATFORM)),rk1126)
+
+ISP_VERSION := rkisp1
+
+#rk1126 use RKISP2CameraHw
+ifneq (,$(findstring rv1126,$(TARGET_BOARD_PLATFORM)))
+  ISP_VERSION := rkisp2
+endif
+#rk356x use RKISP2CameraHw
+ifneq (,$(findstring rk356x,$(TARGET_BOARD_PLATFORM)))
+  ISP_VERSION := rkisp2
+endif
+
+ifeq ($(strip $(ISP_VERSION)),rkisp2)
     include $(LOCAL_PATH)/psl/rkisp2/Android.mk
 else
     include $(LOCAL_PATH)/psl/rkisp1/Android.mk
