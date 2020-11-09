@@ -198,8 +198,9 @@ uint32_t CameraBufferManager::GetNumPlanes(buffer_handle_t buffer) {
     case HAL_PIXEL_FORMAT_YCrCb_420_SP: // NV21
     case HAL_PIXEL_FORMAT_YCbCr_420_888:
     case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED: //NV12
-    default :
         return 2;
+    default :
+        return 1;
     }
 
     LOGF(ERROR) << "Unknown format: " << hal_pixel_format << " - " << FormatToString(hal_pixel_format);
