@@ -43,7 +43,7 @@ class RKISP2ImguUnit: public IMessageHandler,
 
 public:
     RKISP2ImguUnit(int cameraId, RKISP2GraphConfigManager &gcm,
-            std::shared_ptr<MediaController> sensorMediaCtl,std::shared_ptr<MediaController> imgMediaCtl);
+            std::shared_ptr<MediaController> mediaCtl);
     virtual ~RKISP2ImguUnit();
     status_t flush(void);
     status_t configStreams(std::vector<camera3_stream_t*> &activeStreams, bool configChanged);

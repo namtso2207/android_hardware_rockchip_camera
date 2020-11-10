@@ -33,7 +33,7 @@ namespace rkisp2 {
 
 RKISP2ImguUnit::RKISP2ImguUnit(int cameraId,
                    RKISP2GraphConfigManager &gcm,
-                   std::shared_ptr<MediaController> sensorMediaCtl,std::shared_ptr<MediaController> imgMediaCtl) :
+                   std::shared_ptr<MediaController> mediaCtl) :
         mState(IMGU_IDLE),
         mConfigChanged(true),
         mCameraId(cameraId),
@@ -41,7 +41,7 @@ RKISP2ImguUnit::RKISP2ImguUnit(int cameraId,
         mThreadRunning(false),
         mMessageQueue("RKISP2ImguUnitThread", static_cast<int>(MESSAGE_ID_MAX)),
         mCurPipeConfig(nullptr),
-        mRKISP2MediaCtlHelper(sensorMediaCtl,imgMediaCtl, nullptr, true),
+        mRKISP2MediaCtlHelper(mediaCtl, nullptr, true),
         mPollerThread(new PollerThread("ImguPollerThread")),
         mFlushing(false),
         mFirstRequest(true),

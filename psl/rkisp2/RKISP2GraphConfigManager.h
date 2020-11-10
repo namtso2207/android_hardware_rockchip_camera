@@ -104,7 +104,7 @@ public:
      * static methods for XML parsing
      */
 
-    void setMediaCtl(std::shared_ptr<MediaController> sensorMediaCtl,std::shared_ptr<MediaController> imgMediaCtl) { mMediaCtl = sensorMediaCtl; mImgMediaCtl=imgMediaCtl; }
+    void setMediaCtl(std::shared_ptr<MediaController> mediaCtl) { mMediaCtl = mediaCtl; }
     /*
      * First Query
      */
@@ -163,7 +163,6 @@ private:
     MediaCtlConfig mMediaCtlConfigsPrev[MEDIA_TYPE_MAX_COUNT];
 
     std::shared_ptr<MediaController> mMediaCtl;
-    std::shared_ptr<MediaController> mImgMediaCtl;
 };
 
 } // namespace rkisp2

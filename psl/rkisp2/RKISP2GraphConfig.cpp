@@ -2542,9 +2542,9 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
             csiName = it;
         if (it.find("isp-subdev") != std::string::npos)
             IspName = it;
-        if (it.find("rkispp_scale0") != std::string::npos)
+        if (it.find("mainpath") != std::string::npos)
             mpName = it;
-        if (it.find("rkispp_scale1") != std::string::npos)
+        if (it.find("selfpath") != std::string::npos)
             spName = it;
         if (PlatformData::getCameraHWInfo()->isIspSupportRawPath() &&
             it.find("rawpath") != std::string::npos)
@@ -2588,24 +2588,10 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
     if(mIsMipiInterface){
         addLinkParams(mipName, mipSrcPad, csiName, csiSinkPad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
         addLinkParams(csiName, csiSrcPad, IspName, ispSinkPad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-        addLinkParams(csiName, 2, "rkisp_rawwr0", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-        addLinkParams(csiName, 3, "rkisp_rawwr1", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-        addLinkParams(csiName, 4, "rkisp_rawwr2", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-        addLinkParams(csiName, 5, "rkisp_rawwr3", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
     }
     // isp input pad format and selection config
     addFormatParams(IspName, ispInWidth, ispInHeight, ispSinkPad, ispInFormat, 0, 0, mediaCtlConfig);
     addSelectionParams(IspName, ispInWidth, ispInHeight, 0, 0, V4L2_SEL_TGT_CROP, ispSinkPad, mediaCtlConfig);
-    addLinkParams("rkisp-isp-subdev", 2,"rkisp-bridge-ispp" , 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-    addLinkParams("rkisp-isp-subdev", 3,"rkisp-statistics" , 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-    addLinkParams("rkisp-isp-subdev", 3,"rkisp-mipi-luma" , 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-    //addLinkParams("rkisp-bridge-ispp", 1,"rkispp_input_image" , 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-    //addLinkParams("rkispp_input_image", 0,"rkispp-subdev" , 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-    addLinkParams("rkispp_input_params", 0,"rkispp-subdev" , 1, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-    addLinkParams("rkispp-subdev", 2,"rkispp_scale1" , 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-    addLinkParams("rkispp-subdev", 2,"rkispp_scale2" , 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-    addLinkParams("rkispp-subdev", 3,"rkispp-stats" , 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-
 
     // if enable raw but isp doesn't support rawPath, use mainPath to output raw
     if ((rawStream != NULL || LogHelper::isDumpTypeEnable(CAMERA_DUMP_RAW)) &&
@@ -2680,8 +2666,7 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
             addFormatParams(mpName, ispOutWidth, ispOutHeight, mpSinkPad, videoOutFormat, 0, 0, mediaCtlConfig);
         }
         addImguVideoNode(IMGU_NODE_VIDEO, mpName, mediaCtlConfig);
-        //addLinkParams(IspName, ispSrcPad, mpName,  mpSinkPad,  1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-        addLinkParams("rkispp-subdev", 2,"rkispp_m_bypass" , 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+        addLinkParams(IspName, ispSrcPad, mpName,  mpSinkPad,  1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
     } else {
         LOGE("@%s : No app stream map to mainPath", __FUNCTION__);
         return UNKNOWN_ERROR;
@@ -2720,8 +2705,7 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
             addSelectionVideoParams(spName, select, mediaCtlConfig);
             addFormatParams(spName, videoWidth, videoHeight, spSinkPad, videoOutFormat, 0, 0, mediaCtlConfig);
             addImguVideoNode(IMGU_NODE_VF_PREVIEW, spName, mediaCtlConfig);
-            //addLinkParams(IspName, ispSrcPad, spName,  spSinkPad,  1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-            addLinkParams("rkispp-subdev", 2,"rkispp_scale0" , 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+            addLinkParams(IspName, ispSrcPad, spName,  spSinkPad,  1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
         }
     } else {
         //disable isp --> selfPath link
@@ -2951,12 +2935,11 @@ status_t RKISP2GraphConfig::getImguMediaCtlData(int32_t cameraId,
     return ret;
 }
 
-void RKISP2GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> sensorMediaCtl,std::shared_ptr<MediaController> imgMediaCtl,
+void RKISP2GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
                                     bool swapVideoPreview,
                                     bool enableStill)
 {
-    mMediaCtl = sensorMediaCtl;
-    mImgMediaCtl = imgMediaCtl;
+    mMediaCtl = mediaCtl;
 }
 
 /*

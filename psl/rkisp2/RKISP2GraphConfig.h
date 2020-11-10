@@ -286,7 +286,7 @@ public:
     bool isStillPipe() { return mPipeType == PIPE_STILL; }
 
 public:
-    void setMediaCtlConfig(std::shared_ptr<MediaController> sensorMediaCtl,std::shared_ptr<MediaController> imgMediaCtl,
+    void setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
                            bool swapVideoPreview,
                            bool enableStill);
 
@@ -527,7 +527,6 @@ private:
 
     std::string mCSIBE;
     std::shared_ptr<MediaController> mMediaCtl;
-    std::shared_ptr<MediaController> mImgMediaCtl;
 
     string mMainNodeName;
     string mSecondNodeName;

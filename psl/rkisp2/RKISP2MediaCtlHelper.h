@@ -37,7 +37,7 @@ public:
         virtual ~IOpenCallBack();
     };
 
-    RKISP2MediaCtlHelper(std::shared_ptr<MediaController> sensorMediaCtl,std::shared_ptr<MediaController> imgMediaCtl,
+    RKISP2MediaCtlHelper(std::shared_ptr<MediaController> mediaCtl,
             IOpenCallBack *openCallBack, bool isIMGU = false);
     virtual ~RKISP2MediaCtlHelper();
 
@@ -93,7 +93,6 @@ private:
 
     IOpenCallBack* mOpenVideoNodeCallBack;
     std::shared_ptr<MediaController> mMediaCtl;
-    std::shared_ptr<MediaController> mImgMediaCtl;
 
     MediaCtlConfig mConfigedMediaCtlConfigs[RKISP2IStreamConfigProvider::MEDIA_TYPE_MAX_COUNT];
     const MediaCtlConfig *mMediaCtlConfig;
