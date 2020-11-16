@@ -30,6 +30,7 @@
 #include "tasks/RKISP2ExecuteTaskBase.h"
 #include "workers/RKISP2IDeviceWorker.h"
 #include "workers/RKISP2FrameWorker.h"
+#include "RKISP2CtrlLoop.h"
 #include "RKISP2MediaCtlHelper.h"
 
 namespace android {
@@ -59,8 +60,13 @@ public:
     virtual void registerErrorCallback(IErrorCallback* errCb) { mErrCb = errCb; }
     void getConfigedHwPathSize(const char* pathName, uint32_t &size);
     void getConfigedSensorOutputSize(uint32_t &size);
+    void setAiqCl(RKISP2CtrlLoop* cl) {
+       
+             mRKISP2MediaCtlHelper.setAiqCl(cl);
+    }
 
 private:
+
     status_t configureVideoNodes(std::shared_ptr<RKISP2GraphConfig> graphConfig);
     status_t handleMessageCompleteReq(DeviceMessage &msg);
     status_t processNextRequest();

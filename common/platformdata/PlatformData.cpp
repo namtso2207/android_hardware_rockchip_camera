@@ -577,7 +577,7 @@ void PlatformData::init()
 
 	rkisp_metadata_info_t *metadata_info = NULL;
 	int num = 0;
-	ret = rkisp_construct_iq_default_metadatas(&metadata_info, &num);
+	/*ret = rkisp_construct_iq_default_metadatas(&metadata_info, &num);
 	if (ret < 0) {
         LOGE("Fail to construct iq default metadatas!");
         deinit();
@@ -587,7 +587,7 @@ void PlatformData::init()
         LOGE("construct default metadata count: %d", num);
         deinit();
         return;
-	}
+	}*/
     /**
      * This number currently comes from the number if sections in the XML
      * in the future this is not reliable if we want to have multiple cameras

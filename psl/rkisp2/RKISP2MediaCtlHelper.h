@@ -22,6 +22,7 @@
 #include "MediaController.h"
 #include "v4l2device.h"
 #include "NodeTypes.h"
+#include "RKISP2CtrlLoop.h"
 
 namespace android {
 namespace camera2 {
@@ -41,6 +42,11 @@ public:
             IOpenCallBack *openCallBack, bool isIMGU = false);
     virtual ~RKISP2MediaCtlHelper();
 
+    void setAiqCl(RKISP2CtrlLoop* cl) {
+            mAiqCl = cl;
+    }
+
+RKISP2CtrlLoop* mAiqCl;
     status_t configure(RKISP2IStreamConfigProvider &graphConfigMgr,
             RKISP2IStreamConfigProvider::MediaType type);
     status_t configurePipe(RKISP2IStreamConfigProvider &graphConfigMgr,

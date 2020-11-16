@@ -679,14 +679,15 @@ RKISP2ControlUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, 
         const RKISP2CameraCapInfo *cap = getRKISP2CameraCapInfo(mCameraId);
         prepareParams.work_mode = cap->getAiqWorkingMode();
 
-        if (mCtrlLoop && mEnable3A ) {
-            status = mCtrlLoop->start(prepareParams);
-            if (CC_UNLIKELY(status != OK)) {
-                LOGE("Failed to start 3a control loop!");
-                return status;
-            }
-        }
+        // if (mCtrlLoop && mEnable3A ) {
+        //     status = mCtrlLoop->start(prepareParams);
+        //     if (CC_UNLIKELY(status != OK)) {
+        //         LOGE("Failed to start 3a control loop!");
+        //         return status;
+        //     }
+        // }
     }
+
 
     return NO_ERROR;
 }
@@ -1293,7 +1294,21 @@ RKISP2ControlUnit::flush(int configChanged)
     mMessageQueue.remove(MESSAGE_ID_NEW_REQUEST);
     mMessageQueue.remove(MESSAGE_ID_NEW_SHUTTER);
     mMessageQueue.remove(MESSAGE_ID_NEW_REQUEST_DONE);
-    return mMessageQueue.send(&msg, MESSAGE_ID_FLUSH);
+
+
+       
+    status_t status = mMessageQueue.send(&msg, MESSAGE_ID_FLUSH);
+    //  if (mCtrlLoop && mEnable3A ) {
+    //         struct rkisp_cl_prepare_params_s prepareParams;
+
+    //     memset(&prepareParams, 0, sizeof(struct rkisp_cl_prepare_params_s));
+    //         mCtrlLoop->start(prepareParams);
+    //         // if (CC_UNLIKELY(status != OK)) {
+    //         //     LOGE("Failed to start 3a control loop!");
+    //         //     return status;
+    //         // }
+    //     }
+        return status;
 }
 
 status_t

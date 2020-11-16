@@ -114,7 +114,8 @@ status_t RKISP2MediaCtlHelper::configure(RKISP2IStreamConfigProvider &graphConfi
             return status;
         }
     }
-
+     struct rkisp_cl_prepare_params_s params;
+     mAiqCl->start(params);
     // open nodes after link setup
     status = openVideoNodes();
     if (status != NO_ERROR) {

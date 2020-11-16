@@ -88,6 +88,11 @@ public:
                          std::shared_ptr<MediaController> mc);
     virtual ~RKISP2ControlUnit();
 
+
+    RKISP2CtrlLoop* getAiqCl() {
+        return mCtrlLoop;
+    }
+
     status_t init();
     status_t configStreams(std::vector<camera3_stream_t*> &activeStreams, bool configChanged);
 
