@@ -225,9 +225,9 @@ status_t RKISP2MediaCtlHelper::configure(RKISP2IStreamConfigProvider &graphConfi
 
                     if (ctrSel.entityName.find("isp-subdev") == string::npos)
                         continue;
-                    // status = mMediaCtl->setSelection(ctrSel.entityName.c_str(), ctrSel.pad,
-                    //                                  ctrSel.target, ctrSel.top, ctrSel.left,
-                    //                                  ctrSel.width, ctrSel.height);
+                    status = mMediaCtl->setSelection(ctrSel.entityName.c_str(), ctrSel.pad,
+                                                     ctrSel.target, ctrSel.top, ctrSel.left,
+                                                     ctrSel.width, ctrSel.height);
                     if (status != NO_ERROR) {
                         LOGE("Cannot set subdev MediaCtl format selection (ret = %d)", status);
                         return status;
@@ -251,7 +251,7 @@ status_t RKISP2MediaCtlHelper::configure(RKISP2IStreamConfigProvider &graphConfi
                         return status;
                     }
 
-                    //status = vNode->setSelection(vidSel.select);
+                    status = vNode->setSelection(vidSel.select);
                     if (status != NO_ERROR) {
                         LOGE("Cannot set vnode MediaCtl format selection (ret = %d)", status);
                         return status;
@@ -262,9 +262,7 @@ status_t RKISP2MediaCtlHelper::configure(RKISP2IStreamConfigProvider &graphConfi
                 {
                     MediaCtlFormatParams pipeFormat = mMediaCtlConfig->mFormatParams[it.index];
                     std::shared_ptr<MediaEntity> entity = nullptr;
-                    ALOGE("fmt ...%s",pipeFormat.entityName.c_str());
-                    if (strstr(pipeFormat.entityName.c_str(),"rkisp_mainpath")||strstr(pipeFormat.entityName.c_str(),"rkisp_selfpath")||strstr(pipeFormat.entityName.c_str(),"bypass")||strstr(pipeFormat.entityName.c_str(),"rkispp_scale0"))
-                    {
+
                     status = mMediaCtl->getMediaEntity(entity, pipeFormat.entityName.c_str());
                     if (status != NO_ERROR) {
                         LOGE("Getting MediaEntity \"%s\" failed", pipeFormat.entityName.c_str());
@@ -288,7 +286,6 @@ status_t RKISP2MediaCtlHelper::configure(RKISP2IStreamConfigProvider &graphConfi
                         mConfigResults.pixelFormat = pipeFormat.formatCode;
                         LOGI("Capture pipe output format: %s",
                                 v4l2Fmt2Str(mConfigResults.pixelFormat));
-                    }
                     }
                 }
                 break;
