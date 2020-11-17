@@ -322,7 +322,7 @@ RKISP2ControlUnit::getDevicesPath()
     }
 
     // get isp subdevice path
-    entityName = "rkisp1-isp-subdev";
+    entityName = "rkisp-isp-subdev";
     status = mMediaCtl->getMediaEntity(mediaEntity, entityName.c_str());
     if (mediaEntity == nullptr || status != NO_ERROR) {
         LOGE("Could not retrieve media entity %s", entityName.c_str());
@@ -334,7 +334,7 @@ RKISP2ControlUnit::getDevicesPath()
         mDevPathsMap[KDevPathTypeIspDevNode] = subdev->name();
 
     // get isp input params device path
-    entityName = "rkisp1-input-params";
+    entityName = "rkisp-input-params";
     status = mMediaCtl->getMediaEntity(mediaEntity, entityName.c_str());
     if (mediaEntity == nullptr || status != NO_ERROR) {
         LOGE("%s, Could not retrieve Media Entity %s", __FUNCTION__, entityName.c_str());
@@ -346,7 +346,7 @@ RKISP2ControlUnit::getDevicesPath()
         mDevPathsMap[KDevPathTypeIspInputParamsNode] = subdev->name();
 
     // get isp stats device path
-    entityName = "rkisp1-statistics";
+    entityName = "rkisp-statistics";
     status = mMediaCtl->getMediaEntity(mediaEntity, entityName.c_str());
     if (mediaEntity == nullptr || status != NO_ERROR) {
         LOGE("%s, Could not retrieve Media Entity %s", __FUNCTION__, entityName.c_str());
