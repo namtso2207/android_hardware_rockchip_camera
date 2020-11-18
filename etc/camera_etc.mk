@@ -19,7 +19,7 @@ PRODUCT_COPY_FILES += \
 
 endif
 
-ifneq ($(filter rk1126 rk3566, $(strip $(TARGET_BOARD_PLATFORM))), )
+ifneq ($(filter rk1126 rk356x, $(strip $(TARGET_BOARD_PLATFORM))), )
 IQ_FILES_PATH := $(TOP)/external/camera_engine_rkaiq/iqfiles
 PRODUCT_COPY_FILES += \
 	$(call find-copy-subdir-files,*,$(IQ_FILES_PATH)/,$(TARGET_COPY_OUT_VENDOR)/etc/camera/rkisp1/)
