@@ -254,7 +254,6 @@ LOCAL_SHARED_LIBRARIES:= \
     libsync \
     libui \
     librkisp \
-    librkaiq \
     libhardware \
     libjpeghwenc \
     libvpu \

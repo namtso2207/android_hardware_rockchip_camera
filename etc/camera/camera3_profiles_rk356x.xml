@@ -253,7 +253,7 @@
         <Hal_tuning_RKISP1> <!-- Parameters to tune the HAL and hacks for the HAL that are camera dependent -->
             <flipping value="" value_v=""/> <!-- value: SENSOR_FLIP_H or "", value_v: SENSOR_FLIP_V or "" -->
             <supportIsoMap value="false"/>
-            <supportTuningSize value="3264x2448"/>
+            <supportTuningSize value="3264x2448, 1632x1224"/>
         </Hal_tuning_RKISP1>
 
         <Sensor_info_RKISP1> <!-- Information that parametrizes the behavior or qualities of the physical sensor -->

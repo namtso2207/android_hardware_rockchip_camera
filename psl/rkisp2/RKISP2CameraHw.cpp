@@ -620,7 +620,7 @@ status_t RKISP2CameraHw::doConfigureStreams(UseCase newUseCase,
     mControlUnit->flush(!mConfigChanged ? RKISP2ControlUnit::FLUSH_FOR_NOCHANGE :
                         newUseCase == USECASE_STILL ? RKISP2ControlUnit::FLUSH_FOR_STILLCAP :
                         RKISP2ControlUnit::FLUSH_FOR_PREVIEW);
-    mImguUnit->setAiqCl(mControlUnit->getAiqCl());
+
     status = mImguUnit->configStreams(streams, mConfigChanged);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream for imgunit");
@@ -633,7 +633,6 @@ status_t RKISP2CameraHw::doConfigureStreams(UseCase newUseCase,
         return status;
     }
     mGCM.dumpStreamConfig(streams);
-    
     return mImguUnit->configStreamsDone();
 }
 
