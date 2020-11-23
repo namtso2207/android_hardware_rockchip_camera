@@ -171,33 +171,33 @@
                 IMPLEMENTATION_DEFINED,640x480,OUTPUT,
                 IMPLEMENTATION_DEFINED,320x240,OUTPUT,
                 IMPLEMENTATION_DEFINED,176x144,OUTPUT"/>
-            <scaler.availableMinFrameDurations value="BLOB,3264x2448,66666666,
-                BLOB,2592x1944,66666666,
-                BLOB,1920x1080,66666666,
+            <scaler.availableMinFrameDurations value="BLOB,3264x2448,33333333,
+                BLOB,2592x1944,33333333,
+                BLOB,1920x1080,33333333,
                 BLOB,1280x960,33333333,
                 BLOB,1280x720,33333333,
                 BLOB,640x480,33333333,
                 BLOB,320x240,33333333,
                 BLOB,176x144,33333333,
-                YCbCr_420_888,3264x2448,66666666,
-                YCbCr_420_888,2592x1944,66666666,
-                YCbCr_420_888,1920x1080,66666666,
+                YCbCr_420_888,3264x2448,33333333,
+                YCbCr_420_888,2592x1944,33333333,
+                YCbCr_420_888,1920x1080,33333333,
                 YCbCr_420_888,1280x960,33333333,
                 YCbCr_420_888,1280x720,33333333,
                 YCbCr_420_888,640x480,33333333,
                 YCbCr_420_888,320x240,33333333,
                 YCbCr_420_888,176x144,33333333,
-                IMPLEMENTATION_DEFINED,3264x2448,66666666,
-                IMPLEMENTATION_DEFINED,2592x1944,66666666,
-                IMPLEMENTATION_DEFINED,1920x1080,66666666,
+                IMPLEMENTATION_DEFINED,3264x2448,33333333,
+                IMPLEMENTATION_DEFINED,2592x1944,33333333,
+                IMPLEMENTATION_DEFINED,1920x1080,33333333,
                 IMPLEMENTATION_DEFINED,1280x960,33333333,
                 IMPLEMENTATION_DEFINED,1280x720,33333333,
                 IMPLEMENTATION_DEFINED,640x480,33333333,
                 IMPLEMENTATION_DEFINED,320x240,33333333,
                 IMPLEMENTATION_DEFINED,176x144,33333333" />
-            <scaler.availableStallDurations value="BLOB,3264x2448,66666666,
-                                                   BLOB,2592x1944,66666666,
-                                                   BLOB,1920x1080,66666666,
+            <scaler.availableStallDurations value="BLOB,3264x2448,33333333,
+                                                   BLOB,2592x1944,33333333,
+                                                   BLOB,1920x1080,33333333,
                                                    BLOB,1280x960,33333333,
                                                    BLOB,1280x720,33333333,
                                                    BLOB,640x480,33333333,
@@ -253,7 +253,7 @@
         <Hal_tuning_RKISP1> <!-- Parameters to tune the HAL and hacks for the HAL that are camera dependent -->
             <flipping value="" value_v=""/> <!-- value: SENSOR_FLIP_H or "", value_v: SENSOR_FLIP_V or "" -->
             <supportIsoMap value="false"/>
-            <supportTuningSize value="3264x2448, 1632x1224"/>
+            <supportTuningSize value="3264x2448"/>
         </Hal_tuning_RKISP1>
 
         <Sensor_info_RKISP1> <!-- Information that parametrizes the behavior or qualities of the physical sensor -->
