@@ -2681,7 +2681,7 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
         uint32_t spInHeight = ispOutHeight;
         // if SP output size beyond its capacity, the out frame is bad
         if(spStream->width > SP_MAX_WIDTH && spStream->height > SP_MAX_HEIGHT) {
-            LOGD("@%s Stream %p size(%dx%d) beyond SP cap(%dx%d), should attach to MP", __FUNCTION__,
+            LOGW("@%s Stream %p size(%dx%d) beyond SP cap(%dx%d), should attach to MP", __FUNCTION__,
                  spStream, spStream->width, spStream->height, SP_MAX_WIDTH, SP_MAX_HEIGHT);
         } else {
             if (sp_need_crop)
@@ -2872,7 +2872,7 @@ status_t RKISP2GraphConfig::getImguMediaCtlData(int32_t cameraId,
                 LOGD("pipe log name: %s  crop size %dx%d", name.c_str(), nodeWidth, nodeHeight);
             }
 
-            ALOGD("Adding video node: %s", NODE_NAME(pipe));
+            LOGI("Adding video node: %s", NODE_NAME(pipe));
             addImguVideoNode(uids[i].ipuNodeName, name, mediaCtlConfig);
             if (!mSensorLinkedToCIF)
                 addLinkParams(kImguName, MEDIACTL_PAD_OUTPUT_NUM, name, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
@@ -3258,7 +3258,7 @@ void RKISP2GraphConfig::addFormatParams(const string &entityName,
         order.index = config->mFormatParams.size() - 1;
         order.type = MEDIACTL_PARAMS_TYPE_FMT;
         config->mParamsOrder.push_back(order);
-        LOGD("@%s, entityName:%s, width:%d, height:%d, pad:%d, format:0x%x:%s, field:%d",
+        LOGI("@%s, entityName:%s, width:%d, height:%d, pad:%d, format:0x%x:%s, field:%d",
             __FUNCTION__, entityName.c_str(), width, height, pad, format, gcu::pixelCode2String(format).c_str(), field);
     }
 }
@@ -3291,7 +3291,7 @@ void RKISP2GraphConfig::addCtlParams(const string &entityName,
         order.index = config->mControlParams.size() - 1;
         order.type = MEDIACTL_PARAMS_TYPE_CTL;
         config->mParamsOrder.push_back(order);
-        LOGD("@%s, entityName:%s, controlNameStr:%s, controlId:%d, value:%d",
+        LOGI("@%s, entityName:%s, controlNameStr:%s, controlId:%d, value:%d",
             __FUNCTION__, entityName.c_str(), controlNameStr.c_str(), controlId, value);
     }
 }
@@ -3353,7 +3353,7 @@ void RKISP2GraphConfig::addSelectionVideoParams(const string &entityName,
     order.index = config->mSelectionVideoParams.size() - 1;
     order.type = MEDIACTL_PARAMS_TYPE_VIDSEL;
     config->mParamsOrder.push_back(order);
-    LOGD("@%s, width:%d, height:%d, left:%d, top:%d, target:%d, type:%d, flags:%d entityName:%s",
+    LOGI("@%s, width:%d, height:%d, left:%d, top:%d, target:%d, type:%d, flags:%d entityName:%s",
         __FUNCTION__, select.r.width, select.r.height, select.r.left, select.r.top,
         select.target, select.type, select.flags, entityName.c_str());
 }
@@ -3386,7 +3386,7 @@ void RKISP2GraphConfig::addLinkParams(const string &srcName,
         mediaCtlLinkParams.enable = enable;
         mediaCtlLinkParams.flags = flags;
         config->mLinkParams.push_back(mediaCtlLinkParams);
-        LOGD("@%s, srcName:%s, srcPad:%d, sinkName:%s, sinkPad:%d, enable:%d, flags:%d",
+        LOGI("@%s, srcName:%s, srcPad:%d, sinkName:%s, sinkPad:%d, enable:%d, flags:%d",
             __FUNCTION__, srcName.c_str(), srcPad, sinkName.c_str(), sinkPad, enable, flags);
     }
 }

@@ -379,10 +379,10 @@ status_t MediaController::setControl(const char* entityName, int controlId, int 
  */
 status_t MediaController::configureLink(const MediaCtlLinkParams &linkParams)
 {
-    LOGI(" @%s: %s \"%s\" [%d] --> \"%s\" [%d]", __FUNCTION__,
+    LOGI(" @%s: %s \"%s\":%d->\"%s\":%d[%d]", __FUNCTION__,
          linkParams.enable?"enable":"disable",
          linkParams.srcName.c_str(), linkParams.srcPad,
-         linkParams.sinkName.c_str(), linkParams.sinkPad);
+         linkParams.sinkName.c_str(), linkParams.sinkPad,linkParams.enable);
     status_t status = NO_ERROR;
 
     std::shared_ptr<MediaEntity> srcEntity, sinkEntity;

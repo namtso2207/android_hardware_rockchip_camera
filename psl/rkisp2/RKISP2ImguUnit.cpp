@@ -299,7 +299,7 @@ status_t RKISP2ImguUnit::mapStreamWithDeviceNode(int phyStreamsNum)
         availableStreams.insert(availableStreams.begin(), mActiveStreams.blobStreams[0]);
     }
 
-    LOGD("@%s, %d streams, blobNum:%d, yuvNum:%d", __FUNCTION__, streamNum, blobNum, yuvNum);
+    LOGI("@%s, %d streams, blobNum:%d, yuvNum:%d", __FUNCTION__, streamNum, blobNum, yuvNum);
 
     // support up to 4 output streams, and because ISP hardware can only support
     // 2 output streams directly, so other two streams should be implemented as
@@ -411,7 +411,7 @@ status_t RKISP2ImguUnit::mapStreamWithDeviceNode(int phyStreamsNum)
 
     if (videoIdx >= 0) {
         mStreamNodeMapping[IMGU_NODE_VIDEO] = availableStreams[videoIdx];
-        LOGD("@%s, %d stream %p size video: %dx%d, format %s", __FUNCTION__,
+        LOGI("@%s, %d stream %p size video: %dx%d, format %s", __FUNCTION__,
              videoIdx, availableStreams[videoIdx],
              availableStreams[videoIdx]->width, availableStreams[videoIdx]->height,
              METAID2STR(android_scaler_availableFormats_values,
@@ -420,7 +420,7 @@ status_t RKISP2ImguUnit::mapStreamWithDeviceNode(int phyStreamsNum)
 
     for (auto iter : listeners) {
         mStreamListenerMapping[availableStreams[iter.first]] = iter.second;
-        LOGD("@%s (%dx%d 0x%x), %p listen to 0x%x", __FUNCTION__,
+        LOGI("@%s (%dx%d 0x%x), %p listen to 0x%x", __FUNCTION__,
              availableStreams[iter.first]->width, availableStreams[iter.first]->height,
              availableStreams[iter.first]->format, availableStreams[iter.first], iter.second);
     }
@@ -594,7 +594,7 @@ RKISP2ImguUnit::createProcessingTasks(std::shared_ptr<RKISP2GraphConfig> graphCo
         stillConfig->nodes.insert(stillConfig->nodes.begin(), pvWorker->getNode());
 
         if (mCurPipeConfig == videoConfig) {
-            LOGE("%s: configure postview in advance", __FUNCTION__);
+            LOGI("%s: configure postview in advance", __FUNCTION__);
             pvWorker->configure(mConfigChanged);
         }
     }
@@ -611,7 +611,7 @@ RKISP2ImguUnit::createProcessingTasks(std::shared_ptr<RKISP2GraphConfig> graphCo
         }
 
         if (mCurPipeConfig == stillConfig) {
-            LOGE("%s: configure preview in advance", __FUNCTION__);
+            LOGI("%s: configure preview in advance", __FUNCTION__);
             vfWorker->configure(mConfigChanged);
         }
     }
@@ -655,7 +655,7 @@ void RKISP2ImguUnit::setStreamListeners(NodeTypes nodeName,
 {
     for (const auto &it : mStreamListenerMapping) {
         if (it.second == nodeName) {
-            LOGD("@%s stream %p listen to nodeName 0x%x",
+            LOGI("@%s stream %p listen to nodeName 0x%x",
                  __FUNCTION__, it.first, nodeName);
             source->addListener(it.first);
         }
@@ -945,7 +945,7 @@ RKISP2ImguUnit::startProcessing(DeviceMessage pollmsg)
             request->setError();
 
         //HACK: return metadata after updated it
-        LOGD("%s: request %d done", __func__, request->getId());
+        LOGI("%s: request %d done", __func__, request->getId());
         ICaptureEventListener::CaptureMessage outMsg;
         outMsg.data.event.reqId = request->getId();
         outMsg.data.event.type = ICaptureEventListener::CAPTURE_REQUEST_DONE;

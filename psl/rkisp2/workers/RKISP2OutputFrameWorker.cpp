@@ -41,7 +41,7 @@ RKISP2OutputFrameWorker::RKISP2OutputFrameWorker(int cameraId, std::string name,
                 mPostPipeline(new RKISP2PostProcessPipeline(this, cameraId)),
                 mPostProcItemsPool("PostBufPool")
 {
-    LOGD("@%s, name:%s instance:%p, cameraId:%d", __FUNCTION__, name.data(), this, cameraId);
+    LOGI("@%s, name:%s instance:%p, cameraId:%d", __FUNCTION__, name.data(), this, cameraId);
     mPostProcItemsPool.init(mPipelineDepth, PostProcBuffer::reset);
     for (size_t i = 0; i < mPipelineDepth; i++)
     {
@@ -56,7 +56,7 @@ RKISP2OutputFrameWorker::RKISP2OutputFrameWorker(int cameraId, std::string name,
 
 RKISP2OutputFrameWorker::~RKISP2OutputFrameWorker()
 {
-    LOGD("@%s, name:%s instance:%p, cameraId:%d", __FUNCTION__, mName.data(), this, mCameraId);
+    LOGI("@%s, name:%s instance:%p, cameraId:%d", __FUNCTION__, mName.data(), this, mCameraId);
     mPostPipeline.reset();
 }
 
@@ -67,7 +67,7 @@ RKISP2OutputFrameWorker::flushWorker()
     // 1.stream related variable should be destruct here.
     // 2.PostPipeline processing is base on streams, so it must
     // flush and stop here
-    LOGD("@%s enter, %s, mIsStarted:%d", __FUNCTION__, mName.c_str(), mIsStarted);
+    LOGI("@%s enter, %s, mIsStarted:%d", __FUNCTION__, mName.c_str(), mIsStarted);
     if (mIsStarted == false)
         return OK;
     RKISP2FrameWorker::flushWorker();
@@ -82,7 +82,7 @@ RKISP2OutputFrameWorker::flushWorker()
 status_t
 RKISP2OutputFrameWorker::stopWorker()
 {
-    LOGD("@%s enter, %s, mIsStarted:%d", __FUNCTION__, mName.c_str(), mIsStarted);
+    LOGI("@%s enter, %s, mIsStarted:%d", __FUNCTION__, mName.c_str(), mIsStarted);
     if (mIsStarted == false)
         return OK;
     RKISP2FrameWorker::stopWorker();
@@ -108,7 +108,7 @@ RKISP2OutputFrameWorker::notifyNewFrame(const std::shared_ptr<PostProcBuffer>& b
 void RKISP2OutputFrameWorker::addListener(camera3_stream_t* stream)
 {
     if (stream != nullptr) {
-        LOGD("@%s, %s: stream %p has listener %p (%dx%d, fmt %s)", __FUNCTION__,
+        LOGI("@%s, %s: stream %p has listener %p (%dx%d, fmt %s)", __FUNCTION__,
              mName.c_str(), mStream, stream, stream->width, stream->height,
              METAID2STR(android_scaler_availableFormats_values, stream->format));
         mListeners.push_back(stream);
@@ -118,7 +118,7 @@ void RKISP2OutputFrameWorker::addListener(camera3_stream_t* stream)
 void RKISP2OutputFrameWorker::attachStream(camera3_stream_t* stream)
 {
     if (stream != nullptr) {
-        LOGD("@%s, %s attach to stream(%p): %dx%d, type %d, fmt %s", __FUNCTION__,
+        LOGI("@%s, %s attach to stream(%p): %dx%d, type %d, fmt %s", __FUNCTION__,
              mName.c_str(), stream, stream->width, stream->height, stream->stream_type,
              METAID2STR(android_scaler_availableFormats_values, stream->format));
         mStream = stream;
@@ -153,13 +153,13 @@ status_t RKISP2OutputFrameWorker::configure(bool configChanged)
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     status_t ret = OK;
 
-    LOGD("@%s %s: configChanged:%d", __FUNCTION__, mName.c_str(), configChanged);
+    LOGI("@%s %s: configChanged:%d", __FUNCTION__, mName.c_str(), configChanged);
     if(configChanged) {
         ret = mNode->getFormat(mFormat);
         if (ret != OK)
             return ret;
 
-        LOGD("@%s %s format %s, isRawFormat(%s), size %d, %dx%d", __FUNCTION__, mName.c_str(),
+        LOGI("@%s %s format %s, isRawFormat(%s), size %d, %dx%d", __FUNCTION__, mName.c_str(),
              v4l2Fmt2Str(mFormat.pixelformat()),
              graphconfig::utils::isRawFormat(mFormat.pixelformat()) ? "Yes" : "No",
              mFormat.sizeimage(), mFormat.width(), mFormat.height());

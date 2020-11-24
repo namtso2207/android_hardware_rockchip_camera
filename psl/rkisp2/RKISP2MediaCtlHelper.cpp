@@ -314,7 +314,7 @@ status_t RKISP2MediaCtlHelper::configurePipe(RKISP2IStreamConfigProvider &graphC
                                        RKISP2IStreamConfigProvider::MediaType pipeType,
                                        bool resetFormat)
 {
-    ALOGD("%s: %d ->%d", __FUNCTION__, mConfigedPipeType, pipeType);
+    LOGI("%s: %d ->%d", __FUNCTION__, mConfigedPipeType, pipeType);
     status_t status = OK;
     if (!isMediaTypeForPipe(pipeType)) {
         LOGE("%d is not type for pipe!", pipeType);
@@ -375,7 +375,7 @@ status_t RKISP2MediaCtlHelper::configurePipe(RKISP2IStreamConfigProvider &graphC
 
 status_t RKISP2MediaCtlHelper::openVideoNodes()
 {
-    LOGI("@%s", __FUNCTION__);
+    LOGD("@%s", __FUNCTION__);
     status_t status = UNKNOWN_ERROR;
 
     mConfiguredNodes.clear();

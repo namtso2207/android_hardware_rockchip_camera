@@ -712,20 +712,20 @@ RKISP2PostProcessPipeline::prepare_internal(const FrameInfo& in,
             stream_type_map.begin()->second = stream_process_type;
         }
 
-        LOGD("%s: stream %p process type 0x%x", __FUNCTION__,
+        LOGI("%s: stream %p process type 0x%x", __FUNCTION__,
             (stream_type_map.begin())->first, stream_process_type);
        }
     } else {
-        LOGD("%s: no need buffer copy for stream!", __FUNCTION__);
+        LOGW("%s: no need buffer copy for stream!", __FUNCTION__);
     }
 
-    LOGD("%s: common process type 0x%x", __FUNCTION__, common_process_type);
+    LOGI("%s: common process type 0x%x", __FUNCTION__, common_process_type);
     // get the last proc unit for streams
     int stream_proc_types = 0;
     for (auto stream_type_map : streams_post_proc)
         stream_proc_types |= stream_type_map.begin()->second;
 
-    LOGD("%s: streams process type 0x%x", __FUNCTION__, stream_proc_types);
+    LOGI("%s: streams process type 0x%x", __FUNCTION__, stream_proc_types);
     /* judge the steam's last process unit is the same as the common process */
     int last_level_proc_common = 0;
     if (stream_proc_types == 0) {
@@ -735,7 +735,7 @@ RKISP2PostProcessPipeline::prepare_internal(const FrameInfo& in,
             if (common_process_type & test_type)
                 last_level_proc_common = test_type;
         }
-        LOGD("%s: the last common process unit is the same as stream's 0x%x.",
+        LOGI("%s: the last common process unit is the same as stream's 0x%x.",
              __FUNCTION__, last_level_proc_common);
     }
     /* if there exist buffer needed common processes or
@@ -800,7 +800,7 @@ RKISP2PostProcessPipeline::prepare_internal(const FrameInfo& in,
                     procunit_to = procunit_main_last;
                     procunit_main_last = procunit_from;
                 }
-                LOGD("%s: add unit %s to %s, is the last proc unit %d",
+                LOGI("%s: add unit %s to %s, is the last proc unit %d",
                      __FUNCTION__, process_unit_name,
                      procunit_to.get() ? procunit_to.get()->mName : "first level",
                      last_proc_unit);
@@ -834,7 +834,7 @@ RKISP2PostProcessPipeline::prepare_internal(const FrameInfo& in,
                 last_level_proc_stream = test_type;
         }
 
-        LOGD("%s: stream %p last process unit 0x%x", __FUNCTION__,
+        LOGI("%s: stream %p last process unit 0x%x", __FUNCTION__,
              proc_map.begin()->first, last_level_proc_stream);
 
         for (uint32_t i = MAX_COMMON_PROC_UNIT_SHIFT + 1;
@@ -889,7 +889,7 @@ RKISP2PostProcessPipeline::prepare_internal(const FrameInfo& in,
             if (process_unit_name) {
                 procunit_to = procunit_stream_last;
                 procunit_stream_last = procunit_from;
-                LOGD("%s: add unit %s to %s, is the last proc unit %d",
+                LOGI("%s: add unit %s to %s, is the last proc unit %d",
                      __FUNCTION__, process_unit_name,
                      procunit_to.get() ? procunit_to.get()->mName : "first level",
                      last_proc_unit);
@@ -918,7 +918,7 @@ RKISP2PostProcessPipeline::prepare_internal(const FrameInfo& in,
 
     for (int i = 0; i < RKISP2PostProcessPipeline::kMaxLevel; i++) {
         for (auto iter : mPostProcUnitArray[i])
-            LOGD("level %d, unit %s", i, iter->mName);
+            LOGI("level %d, unit %s", i, iter->mName);
     }
 
     LOGD("@%s exit", __FUNCTION__);

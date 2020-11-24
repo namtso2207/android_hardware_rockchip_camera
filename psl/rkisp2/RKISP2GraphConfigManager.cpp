@@ -158,7 +158,7 @@ status_t RKISP2GraphConfigManager::mapStreamToKey(const std::vector<camera3_stre
         LOGI("@%s : only enable mainpath for some special cases", __FUNCTION__);
     }
 
-    LOGI("@%s, mainOutputIndex %d, secondaryOutputIndex %d ", __FUNCTION__, mainOutputIndex, secondaryOutputIndex);
+    LOGD("@%s, mainOutputIndex %d, secondaryOutputIndex %d ", __FUNCTION__, mainOutputIndex, secondaryOutputIndex);
     mStreamToSinkIdMap[availableStreams[mainOutputIndex]] = GCSS_KEY_IMGU_VIDEO;
     if (secondaryOutputIndex >= 0)
         mStreamToSinkIdMap[availableStreams[secondaryOutputIndex]] = GCSS_KEY_IMGU_PREVIEW;
@@ -220,7 +220,7 @@ status_t RKISP2GraphConfigManager::configStreams(const vector<camera3_stream_t*>
      */
     std::shared_ptr<RKISP2GraphConfig> gc = nullptr;
     int poolSize = mGraphConfigPool.availableItems();
-    LOGI("@%s : poolSize:%d", __FUNCTION__, poolSize);
+    LOGD("@%s : poolSize:%d", __FUNCTION__, poolSize);
     for (int i = 0; i < poolSize; i++) {
         mGraphConfigPool.acquireItem(gc);
         ret = prepareGraphConfig(gc);
@@ -381,7 +381,7 @@ void RKISP2GraphConfigManager::getSensorOutputSize(uint32_t &size) {
         size = params[0].width * params[0].height;
     else
         size = 0;
-    LOGD("@%s Curconfig: senor output size:%dx%d", __FUNCTION__,
+    LOGI("@%s Curconfig: senor output size:%dx%d", __FUNCTION__,
          size == 0 ? 0 : params[0].width,
          size == 0 ? 0 : params[0].height);
 }
@@ -468,7 +468,7 @@ void RKISP2GraphConfigManager::dumpStreamConfig(const vector<camera3_stream_t*> 
         videoEnc = CHECK_FLAG(streams[i]->usage, GRALLOC_USAGE_HW_VIDEO_ENCODER);
         zsl = CHECK_FLAG(streams[i]->usage, GRALLOC_USAGE_HW_CAMERA_ZSL);
 
-        ALOGD("stream[%zu] (%s): %dx%d, fmt %s, max buffers:%d, gralloc hints (0x%x) display:%s, video:%s, zsl:%s",
+        LOGI("stream[%zu] (%s): %dx%d, fmt %s, max buffers:%d, gralloc hints (0x%x) display:%s, video:%s, zsl:%s",
                 i,
                 METAID2STR(android_scaler_availableStreamConfigurations_values, streams[i]->stream_type),
                 streams[i]->width, streams[i]->height,

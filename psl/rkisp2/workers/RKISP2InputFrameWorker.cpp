@@ -39,7 +39,7 @@ RKISP2InputFrameWorker::RKISP2InputFrameWorker(int cameraId,
                 mPostPipeline(new RKISP2PostProcessPipeline(this, cameraId))
 {
     mBufferReturned = 0;
-    ALOGD("@%s, instance(%p), mStream(%p)", __FUNCTION__, this, mStream);
+    LOGI("@%s, instance(%p), mStream(%p)", __FUNCTION__, this, mStream);
 }
 
 RKISP2InputFrameWorker::~RKISP2InputFrameWorker()
@@ -237,7 +237,7 @@ status_t RKISP2InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         return NO_ERROR;
     }
 
-    ALOGD("%s:%d:instance(%p), requestId(%d)", __FUNCTION__, __LINE__, this, request->getId());
+    LOGI("%s:%d:instance(%p), requestId(%d)", __FUNCTION__, __LINE__, this, request->getId());
 
 exit:
     if (status < 0)
@@ -275,7 +275,7 @@ status_t RKISP2InputFrameWorker::run()
     outMsg.data.event.sequence = request->sequenceId();
     notifyListeners(&outMsg);
 
-    ALOGD("%s:%d:instance(%p), frame_id(%d), requestId(%d)", __FUNCTION__, __LINE__, this, request->sequenceId(), request->getId());
+    LOGD("%s:%d:instance(%p), frame_id(%d), requestId(%d)", __FUNCTION__, __LINE__, this, request->sequenceId(), request->getId());
 
     return (status < 0) ? status : OK;
 }
