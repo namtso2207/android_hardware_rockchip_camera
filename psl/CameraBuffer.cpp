@@ -426,7 +426,7 @@ status_t CameraBuffer::lock(int flags)
     if (planeNum == 1) {
         void* data = nullptr;
         ret = (mFormat == HAL_PIXEL_FORMAT_BLOB)
-                ? mGbmBufferManager->Lock(mHandle, flags, 0, 0, mStride, 1, &data)
+                ? mGbmBufferManager->Lock(mHandle, flags, 0, 0, mStride > mWidth ? mWidth : mStride, 1, &data)
                 : mGbmBufferManager->Lock(mHandle, flags, 0, 0, mWidth, mHeight, &data);
         if (ret) {
             LOGE("@%s: call Lock fail, mHandle:%p", __FUNCTION__, mHandle);
