@@ -21,6 +21,8 @@
 #include <CameraMetadata.h>
 #include "LogHelper.h"
 
+#define RK_GRALLOC_USAGE_SPECIFY_STRIDE 1ULL << 30
+
 /* ********************************************************************
  * Camera metadata auxiliary API
  */

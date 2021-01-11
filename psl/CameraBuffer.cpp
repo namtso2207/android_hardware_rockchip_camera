@@ -22,6 +22,7 @@
 #include "CameraBuffer.h"
 #include "CameraStream.h"
 #include "Camera3GFXFormat.h"
+#include "CameraMetadataHelper.h"
 #include <unistd.h>
 #include <sync/sync.h>
 
@@ -217,7 +218,7 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     mSize = 0;
     mLocked = false;
     mOwner = static_cast<CameraStream*>(aBuffer->stream->priv);
-    mUsage = mOwner->usage();
+    mUsage = mOwner->usage()|RK_GRALLOC_USAGE_SPECIFY_STRIDE;
     mInit = true;
     mDataPtr = nullptr;
     mUserBuffer = *aBuffer;
@@ -278,7 +279,7 @@ status_t CameraBuffer::init(const camera3_stream_t* stream,
     mSize = 0;
     mLocked = false;
     mOwner = nullptr;
-    mUsage = stream->usage;
+    mUsage = stream->usage|RK_GRALLOC_USAGE_SPECIFY_STRIDE;
     mInit = true;
     mDataPtr = nullptr;
     CLEAR(mUserBuffer);
@@ -800,6 +801,7 @@ std::shared_ptr<CameraBuffer> acquireOneBuffer(int cameraId, int w, int h, bool 
         buffer = MemoryUtils::allocateHandleBuffer(w, h, HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
                                                    GRALLOC_USAGE_SW_READ_OFTEN |
                                                    GRALLOC_USAGE_HW_CAMERA_WRITE|
+                                                   RK_GRALLOC_USAGE_SPECIFY_STRIDE|
                                                    /* TODO: same as the temp solution in RKISP1CameraHw.cpp configStreams func
                                                     * add GRALLOC_USAGE_HW_VIDEO_ENCODER is a temp patch for gpu bug:
                                                     * gpu cant alloc a nv12 buffer when format is
@@ -827,6 +829,7 @@ std::shared_ptr<CameraBuffer> acquireOneBufferWithNoCache(int cameraId, int w, i
     if(allocate && buffer.get() == nullptr) {
         buffer = MemoryUtils::allocateHandleBuffer(w, h, HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
                                                    GRALLOC_USAGE_HW_CAMERA_WRITE|GRALLOC_USAGE_HW_CAMERA_READ|
+                                                   RK_GRALLOC_USAGE_SPECIFY_STRIDE|
                                                    /* TODO: same as the temp solution in RKISP1CameraHw.cpp configStreams func
                                                     * add GRALLOC_USAGE_HW_VIDEO_ENCODER is a temp patch for gpu bug:
                                                     * gpu cant alloc a nv12 buffer when format is
