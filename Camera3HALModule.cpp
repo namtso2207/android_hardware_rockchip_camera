@@ -235,7 +235,7 @@ static int hal_set_torch_mode (const char* camera_id, bool enabled){
             (cameraIdLong >= static_cast<long>(hal_get_number_of_cameras())) ||
             (endPointer == camera_id) ||
             (*endPointer != '\0')) {
-        retVal = -EINVAL;
+        retVal = -ENOSYS;
     } else if (enabled) {
         cameraIdInt = static_cast<int>(cameraIdLong);
         retVal = flash.init(cameraIdInt);

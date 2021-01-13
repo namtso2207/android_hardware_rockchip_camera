@@ -186,13 +186,13 @@ int32_t FlashLight::setFlashMode(const int cameraId, int flashIdx, const bool mo
 
     if (cameraId < 0 || cameraId >= MAX_NUM_CAMERA) {
         LOGE("%s: Invalid camera id: %d", __FUNCTION__, cameraId);
-        retVal = -EINVAL;
+        retVal = -ENOSYS;
     } else if (mode == mFlashOn[cameraId][flashIdx]) {
         LOGD("%s: flash %d is already in requested state: %d", __FUNCTION__, cameraId, mode);
         retVal = -EALREADY;
     } else if (mFlashFds[cameraId][flashIdx] < 0) {
         LOGE("%s: called for uninited flash: %d", __FUNCTION__, cameraId);
-        retVal = -EINVAL;
+        retVal = -ENOSYS;
     }  else {
         struct v4l2_control control;
         struct v4l2_queryctrl qctrl;
@@ -203,14 +203,14 @@ int32_t FlashLight::setFlashMode(const int cameraId, int flashIdx, const bool mo
         qctrl.id = V4L2_CID_FLASH_TORCH_INTENSITY;
         if (ioctl(mFlashFds[cameraId][flashIdx], VIDIOC_QUERYCTRL, &qctrl) < 0) {
             LOGE("@%s : query falsh torch power failed", __FUNCTION__);
-            return -EINVAL;
+            return -ENOSYS;
         }
 
         control.id = V4L2_CID_FLASH_TORCH_INTENSITY;
         control.value = qctrl.default_value;
         if (ioctl(mFlashFds[cameraId][flashIdx], VIDIOC_S_CTRL, &control, 0) < 0) {
             LOGE("@%s : set flash intensity failed", __FUNCTION__);
-            return -EINVAL;
+            return -ENOSYS;
         }
 
         memset(&control, 0, sizeof(control));
@@ -218,7 +218,7 @@ int32_t FlashLight::setFlashMode(const int cameraId, int flashIdx, const bool mo
         control.value = mode ? V4L2_FLASH_LED_MODE_TORCH : V4L2_FLASH_LED_MODE_NONE;
         if (ioctl(mFlashFds[cameraId][flashIdx], VIDIOC_S_CTRL, &control, 0) < 0) {
             LOGE("@%s : set flash mode %d failed", __FUNCTION__, mode);
-            return -EINVAL;
+            return -ENOSYS;
         }
         LOGI("@%s : set flash mode %d sucess", __FUNCTION__, mode);
         mFlashOn[cameraId][flashIdx] = mode;
