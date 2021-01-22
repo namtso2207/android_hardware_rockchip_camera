@@ -38,7 +38,7 @@
             <control.awbLockAvailable value="true"/>
             <control.availableSceneModes value="DISABLED"/>
             <control.availableVideoStabilizationModes value="OFF"/>
-            <control.maxRegions value="1,0,0"/>
+            <control.maxRegions value="1,0,1"/>
             <!-- JPEG -->
             <jpeg.maxSize value="11985408"/>  <!-- 3264*2448*1.5 -->
             <jpeg.availableThumbnailSizes value="0,0,160,120,320,180,320,240"/> <!-- INCREASING ORDER -->
@@ -108,6 +108,7 @@
                 control.aeTargetFpsRange,
                 control.aePrecaptureTrigger,
                 control.afMode,
+                control.aeRegions,
                 control.afRegions,
                 control.afTrigger,
                 control.awbLock,
