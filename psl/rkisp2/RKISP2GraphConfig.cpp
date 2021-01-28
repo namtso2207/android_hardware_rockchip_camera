@@ -59,7 +59,7 @@ namespace gcu = graphconfig::utils;
 #define ISP_DEFAULT_OUTPUT_FORMAT MEDIA_BUS_FMT_YUYV8_2X8
 #define VIDEO_DEFAULT_OUTPUT_FORMAT V4L2_PIX_FMT_NV12
 
-const string csi2_without_port = "rockchip-mipi-dphy-rx";
+const string csi2_without_port = "rockchip-csi2-dphy0";
 
 /* isp port name*/
 const string MEDIACTL_INPUTNAME = "input";
@@ -1976,7 +1976,7 @@ status_t RKISP2GraphConfig::getMediaCtlData(MediaCtlConfig *mediaCtlConfig)
             LOGI("@%s, name:%s\n", __FUNCTION__, entityDesc.name);
             string name = entityDesc.name;
             // check if mipi or DVP interface
-            std::size_t mipi = name.find("mipi");
+            std::size_t mipi = name.find("dphy");
             if (mipi == std::string::npos) {
                 sourceInfo.dvp = true;
                 mCSIBE = entityName;
@@ -2458,7 +2458,7 @@ status_t RKISP2GraphConfig::getSensorMediaCtlConfig(int32_t cameraId,
         // check if mipi or DVP interface
         if (name.find("cif") != std::string::npos)
             mSensorLinkedToCIF = true;
-        if (name.find("mipi") != std::string::npos) {
+        if (name.find("dphy") != std::string::npos) {
             mIsMipiInterface = true;
             mSnsLinkedPhyEntNm = name;
             //check sensor->mipi->cif case
@@ -2535,7 +2535,7 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
     PlatformData::getCameraHWInfo()->getMediaCtlElementNames(elementNames);
     for (auto &it: elementNames) {
         LOGD("elementNames:%s",it.c_str());
-        if (it.find("mipi") != std::string::npos &&
+        if (it.find("dphy") != std::string::npos &&
             mSnsLinkedPhyEntNm == it)
             mipName = it;
         if (it.find("csi-subdev") != std::string::npos)

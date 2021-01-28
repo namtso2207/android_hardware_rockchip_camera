@@ -1453,10 +1453,12 @@ status_t CameraHWInfo::getCSIPortID(const std::string &deviceName, const std::st
     const char *CSI_RX_PORT_NAME_TEMPLATE2 = "CSI2-port";
     const char *CSI_RX_PORT_NAME_TEMPLATE3 = "TPG";
     const char *CSI_RX_PORT_NAME_TEMPLATE4 = "mipi-dphy-rx";
+    const char *CSI_RX_PORT_NAME_TEMPLATE5 = "rockchip-csi2-dphy";
     nameTemplateVec.push_back(CSI_RX_PORT_NAME_TEMPLATE1);
     nameTemplateVec.push_back(CSI_RX_PORT_NAME_TEMPLATE2);
     nameTemplateVec.push_back(CSI_RX_PORT_NAME_TEMPLATE3);
     nameTemplateVec.push_back(CSI_RX_PORT_NAME_TEMPLATE4);
+    nameTemplateVec.push_back(CSI_RX_PORT_NAME_TEMPLATE5);
 
     std::shared_ptr<MediaController> mediaCtl = std::make_shared<MediaController>(mcPath.c_str());
     if (!mediaCtl) {
