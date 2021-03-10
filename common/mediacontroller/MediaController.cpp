@@ -300,7 +300,7 @@ status_t MediaController::setFormat(const MediaCtlFormatParams &formatParams)
 
     status = getMediaEntity(entity, entityName);
     if (status != NO_ERROR) {
-        LOGE("@%s: getting MediaEntity \"%s\" failed", __FUNCTION__, entityName);
+        LOGD("@%s: getting MediaEntity \"%s\" failed", __FUNCTION__, entityName);
         return status;
     }
     if (entity->getType() == DEVICE_VIDEO) {
@@ -391,7 +391,7 @@ status_t MediaController::configureLink(const MediaCtlLinkParams &linkParams)
 
     status = getMediaEntity(srcEntity, linkParams.srcName.c_str());
     if (status != NO_ERROR) {
-        LOGE("@%s: getting MediaEntity \"%s\" failed",
+        LOGD("@%s: getting MediaEntity \"%s\" failed",
              __FUNCTION__, linkParams.srcName.c_str());
         return status;
     }
@@ -467,7 +467,6 @@ status_t MediaController::resetLinks()
 {
     LOGI("@%s", __FUNCTION__);
     status_t status = NO_ERROR;
-
     for (const auto &entityDesciptors : mEntityDesciptors) {
         struct media_entity_desc entityDesc;
         struct media_links_enum linksEnum;

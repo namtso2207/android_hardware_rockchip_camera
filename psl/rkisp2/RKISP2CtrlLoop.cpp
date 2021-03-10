@@ -20,6 +20,7 @@
 #include <utils/Errors.h>
 #include <math.h>
 #include <sys/stat.h>
+#include <rkisp_control_aiq.h>
 
 #include "PlatformData.h"
 #include "CameraMetadataHelper.h"
@@ -33,8 +34,10 @@ NAMESPACE_DECLARATION {
 #if defined(ANDROID_VERSION_ABOVE_8_X)
 #define RK_3A_TUNING_FILE_PATH  "/vendor/etc/camera/rkisp2/"
 #else
-#define RK_3A_TUNING_FILE_PATH  "/etc/camera/rkisp1/"
+#define RK_3A_TUNING_FILE_PATH  "/etc/camera/rkisp2/"
 #endif
+
+static std::map<int, void*> sMap_aiq_ctx;
 
 RKISP2CtrlLoop::RKISP2CtrlLoop(int camId):
         mCameraId(camId),
@@ -50,6 +53,9 @@ status_t RKISP2CtrlLoop::init(const char* sensorName,
     HAL_TRACE_CALL(CAM_GLBL_DBG_INFO);
     PERFORMANCE_ATRACE_NAME("RKISP2CtrlLoop::init");
     status_t status = OK;
+    int ret = 0;
+    mCB=(cl_result_callback_ops_t*)cb;
+
     std::string entityName;
     const char *sensorEntityName = nullptr;
 
@@ -80,8 +86,15 @@ status_t RKISP2CtrlLoop::init(const char* sensorName,
         }
     }
 #endif
-    bool ret = (rkisp_cl_rkaiq_init(&mControlLoopCtx , iq_file_full_path.c_str(), cb, sensorEntityName) == 0 ? true : false);
+    ret = (rkisp_cl_rkaiq_init(&mControlLoopCtx , iq_file_full_path.c_str(), mCB, sensorEntityName) == 0 ? true : false);
     CheckError(ret == false, UNKNOWN_ERROR, "@%s, Error in isp control loop init", __FUNCTION__);
+
+    if(PlatformData::supportDualVideo()) {
+	setMulCamConc(mControlLoopCtx,true);
+    }
+
+    sMap_aiq_ctx.insert(std::pair<int, void*>(mCameraId,mControlLoopCtx));
+
     return status;
 }
 
@@ -89,8 +102,15 @@ void RKISP2CtrlLoop::deinit()
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_INFO);
     PERFORMANCE_ATRACE_NAME("RKISP2CtrlLoop::deinit");
+    if (mIsStarted == true){
+        stop();
+    }
 
-    rkisp_cl_deinit(mControlLoopCtx);
+    std::map<int, void*>::const_iterator it = sMap_aiq_ctx.begin();
+    for (; it != sMap_aiq_ctx.end(); ++it) {
+        rkisp_cl_deinit(it->second);
+    }
+    sMap_aiq_ctx.clear();
     mControlLoopCtx = NULL;
 }
 
@@ -136,14 +156,18 @@ status_t RKISP2CtrlLoop::setFrameParams(rkisp_cl_frame_metadata_s* frame_params)
 
 status_t RKISP2CtrlLoop::stop()
 {
+    HAL_TRACE_CALL(CAM_GLBL_DBG_INFO);
+    PERFORMANCE_ATRACE_NAME("RKISP2CtrlLoop::stop");
+
     if (mIsStarted == false)
         return OK;
 
     int ret = 0;
-    HAL_TRACE_CALL(CAM_GLBL_DBG_INFO);
-    PERFORMANCE_ATRACE_NAME("RKISP2CtrlLoop::stop");
 
-    ret = rkisp_cl_stop(mControlLoopCtx);
+    std::map<int, void*>::const_iterator it = sMap_aiq_ctx.begin();
+    for (; it != sMap_aiq_ctx.end(); ++it) {
+        ret =  rkisp_cl_stop(it->second);
+    }
     if (ret < 0) {
         LOGE("%s: rkisp control loop stop failed !", __FUNCTION__);
         return UNKNOWN_ERROR;

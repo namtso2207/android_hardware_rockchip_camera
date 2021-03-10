@@ -1292,9 +1292,9 @@ std::string RKISP2PSLConfParser::getImguMediaDevice(int cameraId)
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     std::vector<std::string> mediaDevicePaths;
     std::vector<std::string> mediaDevicePath;
-    std::vector<std::string> mediaDeviceNames {"rkispp"};
+    std::vector<std::string> mediaDeviceNames {"rkisp1"};
     for (auto it : mediaDeviceNames) {
-       mediaDevicePath = getMediaDeviceByName(it);
+       mediaDevicePath = getMediaDeviceByModuleName(it);
        mediaDevicePaths.insert(mediaDevicePaths.end(), mediaDevicePath.begin(), mediaDevicePath.end());
     }
 
@@ -1373,6 +1373,68 @@ std::vector<std::string> RKISP2PSLConfParser::getMediaDeviceByName(std::string d
                     MIN(sizeof(info.driver),
                     driverName.size())) == 0) {
             LOGD("Found device that matches: %s", driverName.c_str());
+            //mediaDevicePath += candidate;
+            mediaDevicePath.push_back(candidate);
+        }
+    }
+
+    return mediaDevicePath;
+}
+
+std::vector<std::string> RKISP2PSLConfParser::getMediaDeviceByModuleName(std::string moduleName)
+{
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
+    LOGI("@%s, Target name: %s", __FUNCTION__, moduleName.c_str());
+    const char *MEDIADEVICES = "media";
+    const char *DEVICE_PATH = "/dev/";
+
+    std::vector<std::string> mediaDevicePath;
+    DIR *dir;
+    dirent *dirEnt;
+
+    std::vector<std::string> candidates;
+
+    candidates.clear();
+    if ((dir = opendir(DEVICE_PATH)) != nullptr) {
+        while ((dirEnt = readdir(dir)) != nullptr) {
+            std::string candidatePath = dirEnt->d_name;
+            std::size_t pos = candidatePath.find(MEDIADEVICES);
+            if (pos != std::string::npos) {
+                LOGD("Found media device candidate: %s", candidatePath.c_str());
+                std::string found_one = DEVICE_PATH;
+                found_one += candidatePath;
+                candidates.push_back(found_one);
+            }
+        }
+        closedir(dir);
+    } else {
+        LOGW("Failed to open directory: %s", DEVICE_PATH);
+    }
+
+    status_t retVal = NO_ERROR;
+    // let media0 place before media1
+    std::sort(candidates.begin(), candidates.end());
+    for (const auto &candidate : candidates) {
+        MediaController controller(candidate.c_str());
+        retVal = controller.init();
+
+        // We may run into devices that this HAL won't use -> skip to next
+        if (retVal == PERMISSION_DENIED) {
+            LOGD("Not enough permissions to access %s.", candidate.c_str());
+            continue;
+        }
+
+        media_device_info info;
+        int ret = controller.getMediaDevInfo(info);
+        if (ret != OK) {
+            LOGE("Cannot get media device information.");
+            return mediaDevicePath;
+        }
+
+        if (strncmp(info.model, moduleName.c_str(),
+                    MIN(sizeof(info.model),
+                    moduleName.size())) == 0) {
+            LOGD("Found device that matches: %s", moduleName.c_str());
             //mediaDevicePath += candidate;
             mediaDevicePath.push_back(candidate);
         }

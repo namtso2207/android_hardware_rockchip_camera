@@ -50,6 +50,7 @@ private:
     int mCameraId;
     bool mIsStarted;
     void* mControlLoopCtx;
+    cl_result_callback_ops_t *mCB;
 
 }; //  class RKISP2CtrlLoop
 } NAMESPACE_DECLARATION_END

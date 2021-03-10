@@ -236,7 +236,7 @@ status_t RKISP2GraphConfigManager::configStreams(const vector<camera3_stream_t*>
      * swapVideoPreview here is always false,  by the way, please make sure
      * the video or still stream size >= preview stream size in graph_settings_<sensor name>.xml, zyc.
      */
-    gc->setMediaCtlConfig(mMediaCtl, false, false);
+    gc->setMediaCtlConfig(mMediaCtl, mImgMediaCtl, false, false);
 
     // Get media control config
     for (size_t i = 0; i < MEDIA_TYPE_MAX_COUNT; i++) {

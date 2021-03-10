@@ -2524,6 +2524,8 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
     int paramSrcPad = 0;
 
     string mipName = "none";
+    string mipName2 = "none";
+    string cif_mipiName = "none";
     string csiName = "none";
     string IspName = "none";
     string mpName = "none";
@@ -2538,6 +2540,10 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
         if (it.find("dphy") != std::string::npos &&
             mSnsLinkedPhyEntNm == it)
             mipName = it;
+        if (it.find("mipi-csi") != std::string::npos)
+            mipName2 = it;
+        if (it.find("cif_mipi") != std::string::npos)
+            cif_mipiName = it;
         if (it.find("csi-subdev") != std::string::npos)
             csiName = it;
         if (it.find("isp-subdev") != std::string::npos)
@@ -2555,6 +2561,7 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
             paramName = it;
     }
     LOGD("%s: mipName = %s", __FUNCTION__, mipName.c_str());
+    LOGD("%s: mipName2 = %s", __FUNCTION__, mipName2.c_str());
     LOGD("%s: csiName = %s", __FUNCTION__, csiName.c_str());
     LOGD("%s: IspName = %s", __FUNCTION__, IspName.c_str());
     LOGD("%s: mpName = %s", __FUNCTION__, mpName.c_str());
@@ -2586,11 +2593,30 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
 
     //Dvp doesn't need this link
     if(mIsMipiInterface){
-        addLinkParams(mipName, mipSrcPad, csiName, csiSinkPad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-        addLinkParams(csiName, csiSrcPad, IspName, ispSinkPad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-        addLinkParams(csiName, 2, "rkisp_rawwr0", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-        addLinkParams(csiName, 4, "rkisp_rawwr2", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-        addLinkParams(csiName, 5, "rkisp_rawwr3", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+        if (mipName.find("dphy2") != std::string::npos) {
+            //for dual camera
+            if(PlatformData::supportDualVideo()) {
+                addLinkParams(mipName, mipSrcPad, mipName2, csiSinkPad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+                addLinkParams(mipName2, 1, "stream_cif_mipi_id0", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+                addLinkParams(mipName2, 2, "stream_cif_mipi_id1", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+                addLinkParams(mipName2, 3, "stream_cif_mipi_id2", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+                addLinkParams(mipName2, 4, "stream_cif_mipi_id3", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+
+                addLinkParams("rkisp-csi-subdev", 2, "rkisp_rawwr0", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+                addLinkParams("rkisp-csi-subdev", 4, "rkisp_rawwr2", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+                addLinkParams("rkisp-csi-subdev", 5, "rkisp_rawwr3", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+
+                addLinkParams("rkcif_mipi_lvds", 0, "rkisp-isp-subdev", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+                addLinkParams("rkisp-isp-subdev", 2, "rkisp_mainpath", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+                addLinkParams("rkisp-isp-subdev", 2, "rkisp_selfpath", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+            }
+	    } else {
+            addLinkParams(mipName, mipSrcPad, csiName, csiSinkPad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+            addLinkParams(csiName, csiSrcPad, IspName, ispSinkPad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+            addLinkParams(csiName, 2, "rkisp_rawwr0", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+            addLinkParams(csiName, 4, "rkisp_rawwr2", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+            addLinkParams(csiName, 5, "rkisp_rawwr3", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+	    }
     }
     // isp input pad format and selection config
     addFormatParams(IspName, ispInWidth, ispInHeight, ispSinkPad, ispInFormat, 0, 0, mediaCtlConfig);
@@ -2938,11 +2964,13 @@ status_t RKISP2GraphConfig::getImguMediaCtlData(int32_t cameraId,
     return ret;
 }
 
-void RKISP2GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
+void RKISP2GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> sensorMediaCtl,std::shared_ptr<MediaController> imgMediaCtl,
                                     bool swapVideoPreview,
                                     bool enableStill)
 {
-    mMediaCtl = mediaCtl;
+    mMediaCtl = sensorMediaCtl;
+    mImgMediaCtl = imgMediaCtl;
+
 }
 
 /*
