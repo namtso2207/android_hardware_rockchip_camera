@@ -20,6 +20,9 @@
 
 #include <hardware/camera3.h>
 #include <system/camera_metadata.h>
+#ifdef CAMERA_RKISP2_SUPPORT
+#include <rkcamera_vendor_tags.h>
+#endif
 
 struct metadata_value_t {
     const char * name;

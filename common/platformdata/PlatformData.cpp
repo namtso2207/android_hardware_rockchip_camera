@@ -714,14 +714,35 @@ const CameraCapInfo *PlatformData::getCameraCapInfoForXmlCameraId(int xmlCameraI
     return i->getCameraCapInfoForXmlCameraId(xmlCameraId);
 }
 
+void appendTags(CameraMetadata &meta,int32_t tag,int32_t insert){
+    auto metaTags = meta.find(tag);
+    std::vector<int32_t> supportedMetaTags;
+    supportedMetaTags.reserve(metaTags.count + 1);
+    supportedMetaTags.insert(supportedMetaTags.end(), metaTags.data.i32,
+            metaTags.data.i32 + metaTags.count);
+    supportedMetaTags.push_back(insert);
+    meta.update(tag, supportedMetaTags.data(),
+                supportedMetaTags.size());
+}
 
 void PlatformData::getCameraInfo(int cameraId, struct camera_info * info)
 {
     info->facing = facing(cameraId);
     info->orientation = orientation(cameraId);
     info->device_version = getCameraDeviceAPIVersion();
-    info->static_camera_characteristics = getStaticMetadata(cameraId);
+#ifdef CAMERA_RKISP2_SUPPORT
+    static CameraMetadata staticMeta = getStaticMetadata(cameraId);
+    uint8_t  mode = 1;
+    staticMeta.update(RK_NR_FEATURE_3DNR_MODE,&mode,1);
+    appendTags(staticMeta,ANDROID_REQUEST_AVAILABLE_RESULT_KEYS,RK_NR_FEATURE_3DNR_MODE);
+    appendTags(staticMeta,ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,RK_NR_FEATURE_3DNR_MODE);
+    appendTags(staticMeta,ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS,RK_NR_FEATURE_3DNR_MODE);
 
+    info->static_camera_characteristics = staticMeta.getAndLock();
+    staticMeta.unlock( info->static_camera_characteristics);
+#else
+    info->static_camera_characteristics = getStaticMetadata(cameraId);
+#endif
     //For now assume both cameras can operate independently.
     //simultaneously open multiple camera may be influenced, please check
     //hardware/libhardware/include/hardware/camera_common.h for detail
