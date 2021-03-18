@@ -41,6 +41,11 @@ PSLSRC += \
     psl/NodeTypes.cpp \
     psl/RgaCropScale.cpp
 
+ifeq ($(PRODUCT_HAVE_EPTZ),true)
+PSLSRC += \
+	psl/rkisp2/RKISP2DevImpl.cpp
+endif
+
 STRICTED_CPPFLAGS := \
                     -Wno-unused-parameter \
                     -Wno-sign-compare -std=c++11 \

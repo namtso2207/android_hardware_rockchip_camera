@@ -139,7 +139,14 @@ RKISP2PostProcessUnit::~RKISP2PostProcessUnit() {
         mProcThread.reset();
         mProcThread = nullptr;
     }
-
+#ifdef RK_EPTZ
+    if (mEptzThread){
+        ALOGI("rk-debug: delete mEptzThread ************");
+        mEptzThread->runnable = false;
+        mEptzThread.clear();
+        mEptzThread = NULL;
+    }
+#endif
     mPipeline = NULL;
     mInBufferPool.clear();
     mOutBufferPool.clear();
@@ -1304,7 +1311,7 @@ RKISP2PostProcessUnitUVC::processFrame(const std::shared_ptr<PostProcBuffer>& in
     unsigned char *enc_out_data;
     unsigned int enc_out_len;
     int ret = 0;
-    unsigned char *srcbuf, *dstbuf;
+//    unsigned char *srcbuf, *dstbuf;
 
     LOGD("@%s %d: instance:%p, name: %s", __FUNCTION__, __LINE__, this, mName);
 
@@ -1493,11 +1500,11 @@ RKISP2PostProcessUnitRaw::processFrame(const std::shared_ptr<PostProcBuffer>& in
 
     LOGD("@%s: instance:%p, name: %s", __FUNCTION__, this, mName);
     /* in->cambuf->dumpImage(CAMERA_DUMP_RAW, "RawUnit"); */
-    std::string fileName;
-    std::string dumpPrefix = "";
-    char dumpSuffix[100] = {};
-    char szDateTime[20] = "";
-    struct timeval tval;
+    //std::string fileName;
+    //std::string dumpPrefix = "";
+    //char dumpSuffix[100] = {};
+    //char szDateTime[20] = "";
+    //struct timeval tval;
     // TuningServer *pserver = TuningServer::GetInstance();
 
     // if (pserver && (pserver->mStartCapture) && (pserver->mCapRawNum > 0)){
@@ -1891,7 +1898,7 @@ RKISP2PostProcessUnitSwLsc::lsc(uint8_t *indata, uint16_t input_h_size, uint16_t
                           uint8_t *outdata, uint8_t  c_dw_si)
 {
     //input_h_size
-    int32_t     index = 0;
+    //int32_t     index = 0;
     uint16_t     (*u16_coef_gr)[17][18] = lsc_para->u16_coef_gr;
 
     uint32_t *u32_coef_pic_gr;
@@ -2036,7 +2043,6 @@ RKISP2PostProcessUnitDigitalZoom::processFrame(const std::shared_ptr<PostProcBuf
          out->cambuf->v4l2Fmt());
     // try RGA firstly
     RgaCropScale::Params rgain, rgaout;
-
     rgain.fd = in->cambuf->dmaBufFd();
     if (in->cambuf->format() == HAL_PIXEL_FORMAT_YCrCb_NV12 ||
         in->cambuf->format() == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
@@ -2053,7 +2059,34 @@ RKISP2PostProcessUnitDigitalZoom::processFrame(const std::shared_ptr<PostProcBuf
     rgain.offset_y = maptop;
     rgain.width_stride = in->cambuf->width();
     rgain.height_stride = in->cambuf->height();
-
+#ifdef RK_EPTZ
+    char eptz_property_value[PROPERTY_VALUE_MAX] = {0};
+    property_get("vendor.camera.eptz.mode", eptz_property_value, "0");
+    if(nullptr != mEptzThread){
+        if(mEptzThread->runnable && mEptzThread->isInit){
+            mEptzThread->converData(rgain);
+            mEptzThread->calculateRect(&rgain);
+        }
+    }else{
+        if (atoi(eptz_property_value) != 0){
+            ALOGI("rk-debug mEptzThread create , name %s", mName);
+            mEptzThread = new EptzThread();
+            mEptzThread->setPreviewCfg(in->cambuf->width(), in->cambuf->height());
+            mEptzThread->setMode(atoi(eptz_property_value));
+            mEptzThread->run("CamEPTZThread", PRIORITY_DISPLAY);
+        }
+    }
+    if (mEptzThread && mEptzThread->getMode() != atoi(eptz_property_value)){
+        if(atoi(eptz_property_value) == 0){
+            ALOGI("rk-debug: delete mEptzThread ************");
+            mEptzThread->runnable = false;
+            mEptzThread.clear();
+            mEptzThread = NULL;
+        }else{
+            mEptzThread->setMode(atoi(eptz_property_value));
+        }
+    }
+#endif
     rgaout.fd = out->cambuf->dmaBufFd();
     if (out->cambuf->format() == HAL_PIXEL_FORMAT_YCrCb_NV12 ||
         out->cambuf->format() == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
