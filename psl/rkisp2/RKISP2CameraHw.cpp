@@ -416,7 +416,7 @@ RKISP2CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
         mUseCase = USECASE_STILL;
     }
 
-    ALOGE("%s: select usecase: %s, video/still stream num: %zu/%zu", __FUNCTION__,
+    LOGI("%s: select usecase: %s, video/still stream num: %zu/%zu", __FUNCTION__,
             mUseCase ? "USECASE_VIDEO" : "USECASE_STILL", mStreamsVideo.size(), mStreamsStill.size());
     status = doConfigureStreams(mUseCase, operation_mode, ANDROID_SENSOR_TEST_PATTERN_MODE_OFF);
 
@@ -599,7 +599,7 @@ status_t RKISP2CameraHw::doConfigureStreams(UseCase newUseCase,
         streams.push_back(&mFakeRawStream);
     }
 
-    ALOGE("%s: select usecase: %s, stream nums: %zu", __FUNCTION__,
+    LOGI("%s: select usecase: %s, stream nums: %zu", __FUNCTION__,
             newUseCase == USECASE_VIDEO ? "USECASE_VIDEO" :
             newUseCase == USECASE_STILL ? "USECASE_STILL" : "USECASE_TUNING",
             streams.size());
