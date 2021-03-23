@@ -67,6 +67,8 @@ CameraHWInfo* PlatformData::mCameraHWInfo = nullptr;
 
 GcssKeyMap* PlatformData::mGcssKeyMap = nullptr;
 
+CameraMetadata staticMeta;
+
 /**
  * Sensor drivers have been registered to media controller
  * or to the main device (old style driver)
@@ -731,7 +733,7 @@ void PlatformData::getCameraInfo(int cameraId, struct camera_info * info)
     info->orientation = orientation(cameraId);
     info->device_version = getCameraDeviceAPIVersion();
 #ifdef CAMERA_RKISP2_SUPPORT
-    static CameraMetadata staticMeta = getStaticMetadata(cameraId);
+    staticMeta = getStaticMetadata(cameraId);
     uint8_t  mode = 1;
     staticMeta.update(RK_NR_FEATURE_3DNR_MODE,&mode,1);
     appendTags(staticMeta,ANDROID_REQUEST_AVAILABLE_RESULT_KEYS,RK_NR_FEATURE_3DNR_MODE);
