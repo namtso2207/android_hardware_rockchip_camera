@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 
-#ifndef HAL_ROCKCHIP_PSL_RKISP1_WORKERS_RKISP2PostProcessPipeline_H_
-#define HAL_ROCKCHIP_PSL_RKISP1_WORKERS_RKISP2PostProcessPipeline_H_
+#ifndef HAL_ROCKCHIP_PSL_RKISP2_WORKERS_RKISP2PostProcessPipeline_H_
+#define HAL_ROCKCHIP_PSL_RKISP2_WORKERS_RKISP2PostProcessPipeline_H_
 
 #include <memory>
 #include <Utils.h>
@@ -33,6 +33,9 @@
 #include "tasks/RKISP2JpegEncodeTask.h"
 #include "LogHelper.h"
 #include "uvc_hal_types.h"
+#ifdef RK_EPTZ
+#include "RKISP2DevImpl.h"
+#endif
 
 namespace android {
 namespace camera2 {
@@ -219,6 +222,10 @@ class RKISP2PostProcessUnit : public RKISP2IPostProcessListener,
     std::shared_ptr<PostProcBuffer> mCurPostProcBufIn;
     std::shared_ptr<RKISP2ProcUnitSettings> mCurProcSettings;
     std::shared_ptr<PostProcBuffer> mCurPostProcBufOut;
+    #ifdef RK_EPTZ
+    sp<EptzThread> mEptzThread;
+    #endif
+
  private:
     /*disable copy constructor and assignment*/
     RKISP2PostProcessUnit(const RKISP2PostProcessUnit&);

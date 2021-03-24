@@ -104,6 +104,9 @@ endif
 #rk356x use RKISP2CameraHw
 ifneq (,$(findstring rk356x,$(TARGET_BOARD_PLATFORM)))
   ISP_VERSION := rkisp2
+ifeq ($(PRODUCT_HAVE_EPTZ),true)
+  LOCAL_CFLAGS += -DRK_EPTZ
+endif
 endif
 
 ifeq ($(strip $(ISP_VERSION)),rkisp2)
@@ -259,6 +262,15 @@ LOCAL_SHARED_LIBRARIES:= \
     libvpu \
     libcamera_metadata \
     librga
+
+ifneq (,$(findstring rk356x,$(TARGET_BOARD_PLATFORM)))
+ifeq ($(PRODUCT_HAVE_EPTZ),true)
+LOCAL_SHARED_LIBRARIES += \
+    libeptz \
+    librockx
+endif
+endif
+
 ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 26)))
 LOCAL_SHARED_LIBRARIES += \
     libnativewindow \

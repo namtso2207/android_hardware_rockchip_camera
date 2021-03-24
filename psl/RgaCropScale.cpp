@@ -55,9 +55,11 @@ int RgaCropScale::CropScaleNV12Or21(struct Params* in, struct Params* out)
 	}
 
     if ((in->fmt != HAL_PIXEL_FORMAT_YCrCb_NV12 &&
-        in->fmt != HAL_PIXEL_FORMAT_YCrCb_420_SP) ||
+        in->fmt != HAL_PIXEL_FORMAT_YCrCb_420_SP &&
+		in->fmt != HAL_PIXEL_FORMAT_RGBA_8888) ||
         (out->fmt != HAL_PIXEL_FORMAT_YCrCb_NV12 &&
-        out->fmt != HAL_PIXEL_FORMAT_YCrCb_420_SP)) {
+        out->fmt != HAL_PIXEL_FORMAT_YCrCb_420_SP &&
+		out->fmt != HAL_PIXEL_FORMAT_RGBA_8888)) {
         ALOGE("%s(%d): only accept NV12 or NV21 now. in fmt %d, out fmt %d",
              __FUNCTION__, __LINE__,
              in->fmt, out->fmt);

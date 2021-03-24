@@ -15,6 +15,8 @@
  */
 
 #ifndef HAL_ROCKCHIP_PSL_RKISP1_RGACROPSCALE_H_
+#define HAL_ROCKCHIP_PSL_RKISP1_RGACROPSCALE_H_
+
 namespace android {
 namespace camera2 {
 
