@@ -31,6 +31,8 @@
 #include "FrameInfo.h"
 #include "SysCall.h"
 
+#include "arc/camera_buffer_manager.h"
+
 NAMESPACE_DECLARATION {
 #define pioctl(fd, ctrlId, attr, name) \
     SysCall::ioctl(fd, ctrlId, attr)
@@ -298,6 +300,7 @@ protected:
 
     std::vector<V4L2BufferInfo> mSetBufferPool; /*!< DEPRECATED:This is the buffer pool set before the device is prepared*/
     std::vector<V4L2BufferInfo> mBufferPool;    /*!< This is the active buffer pool */
+    std::vector<buffer_handle_t> mDmaBufferPool;
 
     enum v4l2_buf_type mBufType;
     int                mMemoryType;

@@ -46,6 +46,9 @@ PSLSRC += \
 	psl/rkisp2/RKISP2DevImpl.cpp
 endif
 
+PSLSRC += \
+	psl/rkisp2/RKISP2FecUnit.cpp
+
 STRICTED_CPPFLAGS := \
                     -Wno-unused-parameter \
                     -Wno-sign-compare -std=c++11 \

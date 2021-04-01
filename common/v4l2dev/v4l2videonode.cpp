@@ -25,6 +25,8 @@
 #include <limits.h>
 #include <fcntl.h>
 #include "UtilityMacros.h"
+#include "PlatformData.h"
+#include "CameraMetadataHelper.h"
 
 ////////////////////////////////////////////////////////////////////
 //                          PUBLIC METHODS
@@ -1400,6 +1402,11 @@ void V4L2VideoNode::destroyBufferPool()
     LOGI("%s: @%s", mName.c_str(), __FUNCTION__);
 
     mBufferPool.clear();
+    arc::CameraBufferManager* bufManager = arc::CameraBufferManager::GetInstance();
+    for (int i=0;i<mDmaBufferPool.size();i++) {
+        bufManager->Free(mDmaBufferPool[i]);
+    }
+    mDmaBufferPool.clear();
 
     requestBuffers(0, mMemoryType);
 }
@@ -1531,6 +1538,7 @@ int V4L2VideoNode::createBufferPool(unsigned int buffer_count)
     }
 
     mBufferPool.clear();
+    mDmaBufferPool.clear();
 
     for (i = 0; i < num_buffers; i++) {
         ret = newBuffer(i, mSetBufferPool.at(i));
@@ -1544,6 +1552,7 @@ int V4L2VideoNode::createBufferPool(unsigned int buffer_count)
 error:
     LOGE("Failed to VIDIOC_QUERYBUF some of the buffers, clearing the active buffer pool");
     mBufferPool.clear();
+    mDmaBufferPool.clear();
     return ret;
 }
 
@@ -1552,24 +1561,47 @@ int V4L2VideoNode::newBuffer(int index, V4L2BufferInfo &buf, int memType)
 {
     int ret;
     V4L2Buffer &vbuf = buf.vbuffer;
+    if (memType == V4L2_MEMORY_DMABUF) {
+        PERFORMANCE_ATRACE_NAME("VIDIOC_ALLOC_DMABUF");
+        arc::CameraBufferManager* bufManager = arc::CameraBufferManager::GetInstance();
+        buffer_handle_t handle;
+        uint32_t stride = 0, size = 0;
+        uint32_t usage = GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE|
+                         RK_GRALLOC_USAGE_SPECIFY_STRIDE;
 
-    PERFORMANCE_ATRACE_NAME("VIDIOC_QUERYBUF");
-    vbuf.setFlags(0x0);
-    vbuf.setMemory(memType);
-    vbuf.setType(mBufType);
-    vbuf.setIndex(index);
-    ret = pioctl(mFd , VIDIOC_QUERYBUF, vbuf.get(), mName.c_str());
+        int stride_h = (buf.height + 0xf) & ~0xf;
+        LOGE("%s, [wxh] = [%dx%d], format 0x%x, usage 0x%x",
+          __FUNCTION__, buf.width, stride_h, buf.format, usage);
+        int ret = bufManager->Allocate(buf.width, stride_h, HAL_PIXEL_FORMAT_YCrCb_NV12, usage, arc::GRALLOC, &handle, &stride);
+        vbuf.setFlags(0x0);
+        vbuf.setMemory(memType);
+        vbuf.setType(mBufType);
+        vbuf.setIndex(index);
+        vbuf.setFd(bufManager->GetHandleFd(handle));
+        size = buf.width*buf.height*3/2;
+        vbuf.setLength(size);
+        LOGD("rk-debug: fd = %d", bufManager->GetHandleFd(handle));
+        mDmaBufferPool.push_back(handle);
+    } else {
+        PERFORMANCE_ATRACE_NAME("VIDIOC_QUERYBUF");
+        vbuf.setFlags(0x0);
+        vbuf.setMemory(memType);
+        vbuf.setType(mBufType);
+        vbuf.setIndex(index);
+        ret = pioctl(mFd , VIDIOC_QUERYBUF, vbuf.get(), mName.c_str());
 
-    if (ret < 0) {
-        LOGE("VIDIOC_QUERYBUF failed: %s", strerror(errno));
-        return ret;
+        if (ret < 0) {
+            LOGE("VIDIOC_QUERYBUF failed: %s", strerror(errno));
+            return ret;
+        }
+
+        if (memType == V4L2_MEMORY_USERPTR) {
+            vbuf.userptr((unsigned long)(buf.data));
+        }
+
+        buf.length = vbuf.length();
+        LOGE("rk-debug: buf.length=%d", buf.length);
     }
-
-    if (memType == V4L2_MEMORY_USERPTR) {
-        vbuf.userptr((unsigned long)(buf.data));
-    }
-
-    buf.length = vbuf.length();
     LOGI("%s: index: %u, type: %d, bytesused: %u, length: %u, flags %08x", mName.c_str(), vbuf.index(), vbuf.type(), vbuf.bytesused(), vbuf.length(), vbuf.flags());
     if (memType == V4L2_MEMORY_MMAP) {
         LOGI("memory MMAP: offset 0x%X", vbuf.offset());
