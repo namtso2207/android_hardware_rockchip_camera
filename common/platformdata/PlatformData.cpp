@@ -734,8 +734,8 @@ void PlatformData::getCameraInfo(int cameraId, struct camera_info * info)
     info->device_version = getCameraDeviceAPIVersion();
 #ifdef CAMERA_RKISP2_SUPPORT
     rkisp2::RKISP2CameraCapInfo* cap = (rkisp2::RKISP2CameraCapInfo *)getCameraCapInfo(cameraId);
+    staticMeta = getStaticMetadata(cameraId);
     if (cap->sensorType() == SENSOR_TYPE_RAW ){
-            staticMeta = getStaticMetadata(cameraId);
             uint8_t  mode = 1;
             staticMeta.update(RK_NR_FEATURE_3DNR_MODE,&mode,1);
             appendTags(staticMeta,ANDROID_REQUEST_AVAILABLE_RESULT_KEYS,RK_NR_FEATURE_3DNR_MODE);
@@ -753,9 +753,9 @@ void PlatformData::getCameraInfo(int cameraId, struct camera_info * info)
             appendTags(staticMeta,ANDROID_REQUEST_AVAILABLE_RESULT_KEYS,RK_CONTROL_AIQ_SATURATION);
             appendTags(staticMeta,ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,RK_CONTROL_AIQ_SATURATION);
             appendTags(staticMeta,ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS,RK_CONTROL_AIQ_SATURATION);
-            info->static_camera_characteristics = staticMeta.getAndLock();
-            staticMeta.unlock( info->static_camera_characteristics);
     }
+	info->static_camera_characteristics = staticMeta.getAndLock();
+	staticMeta.unlock( info->static_camera_characteristics);
 #else
     info->static_camera_characteristics = getStaticMetadata(cameraId);
 #endif
