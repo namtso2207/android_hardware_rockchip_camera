@@ -18,6 +18,9 @@
 #define LOG_TAG "RKISP2PostProcessPipeline"
 
 #include "RKISP2PostProcessPipeline.h"
+
+#include <sys/syscall.h>
+
 #include "PerformanceTraces.h"
 #include "CameraMetadataHelper.h"
 #include "CameraStream.h"
@@ -25,6 +28,7 @@
 #include "RgaCropScale.h"
 #include "LogHelper.h"
 #include "FormatUtils.h"
+#include "RKISP2FecUnit.h"
 //#include "TuningServer.h"
 
 #define ALIGN(value, x)	 ((value + (x-1)) & (~(x-1)))
@@ -403,6 +407,11 @@ RKISP2PostProcessUnit::messageThreadLoop(void) {
 
     std::unique_lock<std::mutex> l(mApiLock, std::defer_lock);
     l.lock();
+#ifdef RK_FEC
+    if (mFecUnit) {
+        mFecUnit->distortionInit(2560,1440);
+    }
+#endif
     while (mThreadRunning) {
         l.unlock();
         doProcess();
@@ -693,9 +702,13 @@ RKISP2PostProcessPipeline::prepare_internal(const FrameInfo& in,
                                     ANDROID_SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
         float max_digital_zoom = 1.0f;
         MetadataHelper::getValueByType(entry, 0, &max_digital_zoom);
+#ifdef RK_FEC
+        if (max_digital_zoom > 1.0)
+           common_process_type |= kPostProcessTypeFec;
+#else
         if (max_digital_zoom > 1.0)
            common_process_type |= kPostProcessTypeDigitalZoom;
-
+#endif
 #ifdef MIRROR_HANDLING_FOR_FRONT_CAMERA
         //for front camera mirror handling, front camera preview do twice mirror
         if(PlatformData::facing(mCameraId) == CAMERA_FACING_FRONT) {
@@ -770,6 +783,11 @@ RKISP2PostProcessPipeline::prepare_internal(const FrameInfo& in,
         const char* process_unit_name = NULL;
         if (common_process_type & test_type) {
             switch (test_type) {
+            case kPostProcessTypeFec :
+                process_unit_name = "fecunit";
+                procunit_from = std::make_shared<RKISP2PostProcessUnitFec>
+                    (process_unit_name, test_type, mCameraId, buf_type, this);                
+                break;
             case kPostProcessTypeDigitalZoom :
                 process_unit_name = "digitalzoom";
                 procunit_from = std::make_shared<RKISP2PostProcessUnitDigitalZoom>
@@ -1195,6 +1213,7 @@ RKISP2PostProcessPipeline::handleProcessFrame(Message &msg)
     status = addOutputBuffer(msg.processMsg.out);
     if (status != OK)
         return status;
+//    LOGE("rk-debug: ======== pid=%d", syscall(SYS_gettid));
     mOutputBuffersHandler->addSyncBuffersIfNeed(msg.processMsg.in, msg.processMsg.out);
     // send |in| to each first level process unit
     for (auto iter : mPostProcUnitArray[kFirstLevel])
@@ -1995,7 +2014,7 @@ RKISP2PostProcessUnitDigitalZoom::processFrame(const std::shared_ptr<PostProcBuf
     //for front camera mirror handling
     mirror_handing = PlatformData::facing(mPipeline->getCameraId()) == CAMERA_FACING_FRONT;
 #endif
-    LOGD("@%s : mirror handleing %d", __FUNCTION__, mirror_handing);
+    LOGD("@%s : mirror handleing %d pid=%d", __FUNCTION__, mirror_handing, syscall(SYS_gettid));
 
     // check if zoom is required
     if (mBufType != kPostProcBufTypeExt &&
@@ -2033,6 +2052,7 @@ RKISP2PostProcessUnitDigitalZoom::processFrame(const std::shared_ptr<PostProcBuf
     maptop &= ~0x1;
     mapwidth &= ~0x3;
     mapheight &= ~0x3;
+
     // do digital zoom
     LOGD("%s: crop region(%d,%d,%d,%d) from (%d,%d), infmt %d,%d, outfmt %d,%d",
          __FUNCTION__, mapleft, maptop, mapwidth, mapheight,
@@ -2112,6 +2132,102 @@ RKISP2PostProcessUnitDigitalZoom::processFrame(const std::shared_ptr<PostProcBuf
                          mapleft, maptop, mapwidth, mapheight,
                          out->cambuf->data(), out->cambuf->height(), out->cambuf->width(),
                          0, 0, out->cambuf->width(), out->cambuf->height());
+    }
+
+    return OK;
+}
+
+RKISP2PostProcessUnitFec::RKISP2PostProcessUnitFec(
+    const char* name, int type, int camid, uint32_t buftype, RKISP2PostProcessPipeline* pl)
+    : RKISP2PostProcessUnit(name, type, buftype, pl) {
+    mApa = PlatformData::getActivePixelArray(camid);
+    mFecUnit = std::make_shared<RKISP2FecUnit>();
+}
+
+RKISP2PostProcessUnitFec::~RKISP2PostProcessUnitFec() {
+    LOGE(" distortionDeinit *************");
+    if (mFecUnit)
+        mFecUnit->distortionDeinit();
+    mFecUnit.reset();
+}
+
+bool RKISP2PostProcessUnitFec::checkFmt(CameraBuffer* in, CameraBuffer* out) {
+    if (!in || !out)
+        return false;
+
+    // only support NV12 or NV21 now
+    bool in_fmt_supported = in->format() == HAL_PIXEL_FORMAT_YCrCb_NV12 ||
+                            in->format() == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
+                            in->format() == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED ||
+                            in->format() == HAL_PIXEL_FORMAT_YCrCb_420_SP ||
+                            in->v4l2Fmt() == V4L2_PIX_FMT_NV12 ||
+                            in->v4l2Fmt() == V4L2_PIX_FMT_NV21;
+    bool out_fmt_supported = out->format() == HAL_PIXEL_FORMAT_YCrCb_NV12 ||
+                             out->format() == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED ||
+                             out->format() == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
+                             out->format() == HAL_PIXEL_FORMAT_YCrCb_420_SP;
+                             out->v4l2Fmt() == V4L2_PIX_FMT_NV12 ||
+                             out->v4l2Fmt() == V4L2_PIX_FMT_NV21;
+    return (in_fmt_supported && out_fmt_supported);
+}
+
+status_t
+RKISP2PostProcessUnitFec::processFrame(const std::shared_ptr<PostProcBuffer>& in,
+                              const std::shared_ptr<PostProcBuffer>& out,
+                              const std::shared_ptr<RKISP2ProcUnitSettings>& settings) {
+    PERFORMANCE_ATRACE_CALL();
+    CameraWindow& crop = settings->cropRegion;
+    int jpegBufCount = settings->request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB);
+
+    bool mirror_handing = false;
+#ifdef MIRROR_HANDLING_FOR_FRONT_CAMERA
+    //for front camera mirror handling
+    mirror_handing = PlatformData::facing(mPipeline->getCameraId()) == CAMERA_FACING_FRONT;
+#endif
+    LOGD("@%s : mirror handleing %d pid=%d", __FUNCTION__, mirror_handing, syscall(SYS_gettid));
+
+    // check if zoom is required
+    if (mBufType != kPostProcBufTypeExt &&
+        crop.width() ==  mApa.width() && crop.height() == mApa.height()) {
+        // HwJpeg encode require buffer width and height align to 16 or large enough.
+        // digital zoom out buffer is internal gralloc buffer with size 2xWxH, so it
+        // can always meet the Hwjpeg input condition. we use it as a workaround
+        // for capture case
+        if(jpegBufCount != 0) {
+            LOGD("@%s : Use digital zoom out gralloc buffer as hwjpeg input buffer", __FUNCTION__);
+        } else if(mirror_handing) {
+            LOGD("@%s : use digitalZoom do mirror for front camera", __FUNCTION__);
+        } else {
+            return STATUS_FORWRAD_TO_NEXT_UNIT;
+        }
+    }
+
+    if (!checkFmt(in->cambuf.get(), out->cambuf.get())) {
+        LOGE("%s: unsupported format, only support NV12 or NV21 now !", __FUNCTION__);
+        return UNKNOWN_ERROR;
+    }
+    // map crop window to in-buffer crop window
+    int mapleft, maptop, mapwidth, mapheight;
+    float wratio = (float)crop.width() / mApa.width();
+    float hratio = (float)crop.height() / mApa.height();
+    float hoffratio = (float)crop.left() / mApa.width();
+    float voffratio = (float)crop.top() / mApa.height();
+
+    mapleft = in->cambuf->width() * hoffratio;
+    maptop = in->cambuf->height() * voffratio;
+    mapwidth = in->cambuf->width() * wratio;
+    mapheight = in->cambuf->height() * hratio;
+    // should align to 2
+    mapleft &= ~0x1;
+    maptop &= ~0x1;
+    mapwidth &= ~0x3;
+    mapheight &= ~0x3;
+
+    if (mFecUnit) {
+        int fencefd = -1;
+        mFecUnit->distortionInit(3840, 2160);
+        mFecUnit->doFecProcess(mapwidth, mapheight, in->cambuf->dmaBufFd(),
+            out->cambuf->width(), out->cambuf->height(), out->cambuf->dmaBufFd(), fencefd);
     }
 
     return OK;

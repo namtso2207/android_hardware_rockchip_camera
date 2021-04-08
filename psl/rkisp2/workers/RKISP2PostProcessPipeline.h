@@ -36,6 +36,7 @@
 #ifdef RK_EPTZ
 #include "RKISP2DevImpl.h"
 #endif
+#include "RKISP2FecUnit.h"
 
 namespace android {
 namespace camera2 {
@@ -55,6 +56,7 @@ enum PostProcessType {
     kPostProcessTypeCropRotationScale = 1 << 3,
     kPostprocessTypeUvnr              = 1 << 4,
     kPostProcessTypeDigitalZoom       = 1 << 5,
+    kPostProcessTypeFec               = 1 << 6,
     kPostProcessTypeCommonMax         = 1 << MAX_COMMON_PROC_UNIT_SHIFT,
     /* stream only */
     kPostProcessTypeScaleAndRotation  = 1 << 17,
@@ -225,6 +227,7 @@ class RKISP2PostProcessUnit : public RKISP2IPostProcessListener,
     #ifdef RK_EPTZ
     sp<EptzThread> mEptzThread;
     #endif
+    std::shared_ptr<RKISP2FecUnit> mFecUnit;
 
  private:
     /*disable copy constructor and assignment*/
@@ -353,6 +356,24 @@ class RKISP2PostProcessUnitDigitalZoom : public RKISP2PostProcessUnit
     /*disable copy constructor and assignment*/
     RKISP2PostProcessUnitDigitalZoom(const RKISP2PostProcessUnitDigitalZoom&);
     RKISP2PostProcessUnitDigitalZoom& operator=(const RKISP2PostProcessUnitDigitalZoom&);
+};
+
+class RKISP2PostProcessUnitFec : public RKISP2PostProcessUnit
+{
+ public:
+    RKISP2PostProcessUnitFec(const char* name, int type, int camid, uint32_t buftype = kPostProcBufTypeInt,
+                                RKISP2PostProcessPipeline* pl = nullptr);
+    virtual ~RKISP2PostProcessUnitFec();
+    virtual status_t processFrame(const std::shared_ptr<PostProcBuffer>& in,
+                                  const std::shared_ptr<PostProcBuffer>& out,
+                                  const std::shared_ptr<RKISP2ProcUnitSettings>& settings);
+ private:
+    virtual bool checkFmt(CameraBuffer* in, CameraBuffer* out);
+    // cache active pixel array
+    CameraWindow mApa;
+    /*disable copy constructor and assignment*/
+    RKISP2PostProcessUnitFec(const RKISP2PostProcessUnitFec&);
+    RKISP2PostProcessUnitFec& operator=(const RKISP2PostProcessUnitFec&);
 };
 
 /*

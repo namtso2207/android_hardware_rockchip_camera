@@ -107,6 +107,9 @@ ifneq (,$(findstring rk356x,$(TARGET_BOARD_PLATFORM)))
 ifeq ($(PRODUCT_HAVE_EPTZ),true)
   LOCAL_CFLAGS += -DRK_EPTZ
 endif
+ifeq ($(PRODUCT_HAVE_FEC),true)
+  LOCAL_CFLAGS += -DRK_FEC
+endif
 endif
 
 ifeq ($(strip $(ISP_VERSION)),rkisp2)
