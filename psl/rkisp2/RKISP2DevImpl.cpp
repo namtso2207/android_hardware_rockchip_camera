@@ -69,6 +69,12 @@ void EptzThread::setMode(int mode)
     eptz_mode = mode;
 }
 
+void EptzThread::setOcclusionMode(int mode)
+{
+    ALOGI("rk-debug:EptzThread setOcclusionMode %d", mode);
+    occlusion_mode = mode;
+}
+
 int EptzThread::getMode()
 {
     return eptz_mode;
@@ -77,6 +83,7 @@ int EptzThread::getMode()
 bool EptzThread::threadLoop(){
     static int mode = eptz_mode;
     static bool first_flag = true;
+    static int cnt = 0;
     if (!runnable){
         usleep(30*1000);
         return true;
@@ -114,7 +121,17 @@ bool EptzThread::threadLoop(){
     if (buffer != nullptr) {
         void* imagedata = nullptr;
         buffer->lock(mTexUsage, &imagedata);
-        RockxDetectFace(imagedata, npu_width, npu_height, ROCKX_PIXEL_FORMAT_YUV420SP_NV12);
+        if(mode)
+            RockxDetectFace(imagedata, npu_width, npu_height, ROCKX_PIXEL_FORMAT_YUV420SP_NV12);
+        if(occlusion_mode && cnt++ % 200 == 0){
+            int ret = RockxDetectOcclusion(imagedata, npu_width, npu_height, ROCKX_PIXEL_FORMAT_YUV420SP_NV12);
+            if(ret != -1){
+                if(1 == ret)
+                    property_set("vendor.camera.occlusion.status", "1");
+                else
+                    property_set("vendor.camera.occlusion.status", "0");
+            }
+        }
         buffer->unlock();         
         // if(cnt == 100){
         //     FILE* fp = fopen("/data/test.yuv", "wb+");
@@ -192,6 +209,24 @@ int EptzThread::RockxDetectFace(void *in_data, int inWidth, int inHeight, int in
     return 0;
 }
 
+int EptzThread::RockxDetectOcclusion(void *in_data, int inWidth, int inHeight, int inPixelFmt){
+    // initial rockx_image_t variable
+    rockx_image_t input_image;
+    input_image.width = inWidth;
+    input_image.height = inHeight;
+    input_image.data = (unsigned char *)in_data;
+    input_image.pixel_format = (rockx_pixel_format)inPixelFmt;
+
+    int result = 0;
+    // detect occlusion
+    rockx_ret_t ret = rockx_image_detect_occlusion(&input_image, &result);
+    if (ret != ROCKX_RET_SUCCESS) {
+        LOGD("rk-debug rockx_face_detect error %d\n", ret);
+        return -1;
+    }
+    return result;
+
+}
 void EptzThread::EptzInit(int mSrcWidth, int mSrcHeight, int mClipWidth, int mClipHeight){
     mEptzInfo.eptz_src_width = mSrcWidth;
     mEptzInfo.eptz_src_height = mSrcHeight;

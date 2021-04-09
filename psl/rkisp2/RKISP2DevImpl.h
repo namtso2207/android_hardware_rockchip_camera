@@ -55,11 +55,11 @@ class EptzThread : public android::Thread {
         void calculateRect(RgaCropScale::Params *p);
         void converData(RgaCropScale::Params p);
         void setMode(int mode);
+        void setOcclusionMode(int mode);
         int getMode();
 
         bool runnable;
         bool isInit;
-
         std::vector<DetectData> mDetectDatas;
         std::vector<sp<GraphicBuffer>> nnBufVecs;
         int mLastXY[4];
@@ -67,9 +67,11 @@ class EptzThread : public android::Thread {
         void EptzInitCfg(int width, int height);
         int RockxInit(char *model_path, char *licence_path);
         int RockxDetectFace(void *in_data, int inWidth, int inHeight, int inPixelFmt);
+        int RockxDetectOcclusion(void *in_data, int inWidth, int inHeight, int inPixelFmt);
         void EptzInit(int mSrcWidth, int mSrcHeight, int mClipWidth, int mClipHeight);
 
         int eptz_mode;
+        int occlusion_mode;
         int src_width;
         int src_height;
         int npu_width;

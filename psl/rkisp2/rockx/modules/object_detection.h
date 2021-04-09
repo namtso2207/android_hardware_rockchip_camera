@@ -104,6 +104,17 @@ rockx_ret_t rockx_person_detect(rockx_handle_t handle, rockx_image_t *in_img, ro
 rockx_ret_t rockx_person_detect2(rockx_handle_t handle, rockx_image_t *in_img, int mode, rockx_object_array_t *object_array,
                               rockx_async_callback *callback);
 
+/**
+ * IPC Object Detection
+ * @param handle [in] Handle of a created ROCKX_MODULE_OBJECT_DETECTION_IPC module(created by @ref rockx_create)
+ * @param in_img [in] Input image
+ * @param object_array [out] Detection Result, cls_idx 0: person, 1: face
+ * @param callback [in] Async callback function pointer
+ * @return @ref rockx_ret_t
+ */
+rockx_ret_t rockx_object_detect_ipc(rockx_handle_t handle, rockx_image_t *in_img, rockx_object_array_t *object_array,
+                              rockx_async_callback *callback);
+
 #ifdef __cplusplus
 } //extern "C"
 #endif

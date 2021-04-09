@@ -124,10 +124,12 @@ rockx_ret_t rockx_image_convert_keep_ration(rockx_image_t *src, rockx_image_t *d
  * @param scale_h [out] height resize scale
  * @param left_offset [out] Image left padding offset
  * @param top_offset [out] Image top padding offset
+ * @param resize_method [in] Resize Method
+ * @param allow_slight_change [in] Allow slight change ratio for speed
  * @return @ref rockx_ret_t
  */
 rockx_ret_t rockx_image_convert_keep_ratio_by_method(rockx_image_t *src, rockx_image_t *dst, int on_center, int pad_color, 
-        float *scale_w, float *scale_h, float *left_offset, float *top_offset,rockx_image_resize_method_t resize_method);
+        float *scale_w, float *scale_h, float *left_offset, float *top_offset, rockx_image_resize_method_t resize_method, int allow_slight_change);
 
 /**
  * @brief Image Clarity
@@ -137,6 +139,15 @@ rockx_ret_t rockx_image_convert_keep_ratio_by_method(rockx_image_t *src, rockx_i
  * @return @ref rockx_ret_t
  */
 rockx_ret_t rockx_image_clarity(rockx_image_t *in_image, float *clarity);
+
+/**
+ * @brief Image Occlusion Detection
+ * 
+ * @param in_image [in] image
+ * @param res [out] 0: normal 1: occlusion
+ * @return @ref rockx_ret_t
+ */
+rockx_ret_t rockx_image_detect_occlusion(rockx_image_t *in_image, int *res);
 
 /**
  * @brief Image ROI

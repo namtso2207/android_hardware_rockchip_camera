@@ -2080,6 +2080,10 @@ RKISP2PostProcessUnitDigitalZoom::processFrame(const std::shared_ptr<PostProcBuf
     rgain.width_stride = in->cambuf->width();
     rgain.height_stride = in->cambuf->height();
 #ifdef RK_EPTZ
+//#ifdef RK_OCCLUSION
+    char occlusion_property_value[PROPERTY_VALUE_MAX] = {0};
+    property_get("vendor.camera.occlusion.enable", occlusion_property_value, "0");
+//#endif
     char eptz_property_value[PROPERTY_VALUE_MAX] = {0};
     property_get("vendor.camera.eptz.mode", eptz_property_value, "0");
     if(nullptr != mEptzThread){
@@ -2088,11 +2092,12 @@ RKISP2PostProcessUnitDigitalZoom::processFrame(const std::shared_ptr<PostProcBuf
             mEptzThread->calculateRect(&rgain);
         }
     }else{
-        if (atoi(eptz_property_value) != 0){
+        if (atoi(eptz_property_value) != 0 || atoi(occlusion_property_value) != 0){
             ALOGI("rk-debug mEptzThread create , name %s", mName);
             mEptzThread = new EptzThread();
             mEptzThread->setPreviewCfg(in->cambuf->width(), in->cambuf->height());
             mEptzThread->setMode(atoi(eptz_property_value));
+            mEptzThread->setOcclusionMode(atoi(occlusion_property_value));
             mEptzThread->run("CamEPTZThread", PRIORITY_DISPLAY);
         }
     }
