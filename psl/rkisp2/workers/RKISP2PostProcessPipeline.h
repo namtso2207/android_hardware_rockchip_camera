@@ -226,6 +226,7 @@ class RKISP2PostProcessUnit : public RKISP2IPostProcessListener,
     std::shared_ptr<PostProcBuffer> mCurPostProcBufOut;
     #ifdef RK_EPTZ
     sp<EptzThread> mEptzThread;
+    virtual status_t processEptzFrame(const std::shared_ptr<PostProcBuffer>& buf);
     #endif
     std::shared_ptr<RKISP2FecUnit> mFecUnit;
 

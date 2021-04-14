@@ -393,6 +393,9 @@ RKISP2PostProcessUnit::doProcess() {
             status = processFrame(mCurPostProcBufIn,
                                   mCurPostProcBufOut,
                                   mCurProcSettings);
+#ifdef RK_EPTZ
+            processEptzFrame(mCurPostProcBufOut);
+#endif
             status = relayToNextProcUnit(status);
         }
         l.lock();
@@ -565,6 +568,77 @@ RKISP2PostProcessUnit::processFrame(const std::shared_ptr<PostProcBuffer>& in,
 
     return status;
 }
+
+#ifdef RK_EPTZ
+status_t
+RKISP2PostProcessUnit::processEptzFrame(const std::shared_ptr<PostProcBuffer>& mCurPostProcBufOut) {
+    LOGD("%s, @%s ", mName, __FUNCTION__);
+    RgaCropScale::Params rgain, rgaout;
+    rgain.fd = mCurPostProcBufOut->cambuf->dmaBufFd();
+    if (mCurPostProcBufOut->cambuf->format() == HAL_PIXEL_FORMAT_YCrCb_NV12 ||
+        mCurPostProcBufOut->cambuf->v4l2Fmt() == V4L2_PIX_FMT_NV12)
+        rgain.fmt = HAL_PIXEL_FORMAT_YCrCb_NV12;
+    else
+        rgain.fmt = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+    rgain.vir_addr = (char*)mCurPostProcBufOut->cambuf->data();
+    rgain.mirror = false;
+    rgain.width = mCurPostProcBufOut->cambuf->width();
+    rgain.height = mCurPostProcBufOut->cambuf->height();
+    rgain.offset_x = 0;
+    rgain.offset_y = 0;
+    rgain.width_stride = mCurPostProcBufOut->cambuf->width();
+    rgain.height_stride = mCurPostProcBufOut->cambuf->height();
+
+    rgaout.fd = mCurPostProcBufOut->cambuf->dmaBufFd();
+    if (mCurPostProcBufOut->cambuf->format() == HAL_PIXEL_FORMAT_YCrCb_NV12 ||
+        mCurPostProcBufOut->cambuf->v4l2Fmt() == V4L2_PIX_FMT_NV12)
+        rgaout.fmt = HAL_PIXEL_FORMAT_YCrCb_NV12;
+    else
+        rgaout.fmt = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+    rgaout.vir_addr = (char*)mCurPostProcBufOut->cambuf->data();
+    rgaout.mirror = false;
+    rgaout.width = mCurPostProcBufOut->cambuf->width();
+    rgaout.height = mCurPostProcBufOut->cambuf->height();
+    rgaout.offset_x = 0;
+    rgaout.offset_y = 0;
+    rgaout.width_stride = mCurPostProcBufOut->cambuf->width();
+    rgaout.height_stride = mCurPostProcBufOut->cambuf->height();
+
+    //#ifdef RK_OCCLUSION
+    char occlusion_property_value[PROPERTY_VALUE_MAX] = {0};
+    property_get("vendor.camera.occlusion.enable", occlusion_property_value, "0");
+    //#endif
+    char eptz_property_value[PROPERTY_VALUE_MAX] = {0};
+    property_get("vendor.camera.eptz.mode", eptz_property_value, "0");
+    if(nullptr != mEptzThread){
+        if(mEptzThread->runnable && mEptzThread->isInit){
+            mEptzThread->converData(rgain);
+            mEptzThread->calculateRect(&rgain);
+        }
+    }else{
+        if (atoi(eptz_property_value) != 0 || atoi(occlusion_property_value) != 0){
+            ALOGI("rk-debug mEptzThread create , name %s", mName);
+            mEptzThread = new EptzThread();
+            mEptzThread->setPreviewCfg(mCurPostProcBufOut->cambuf->width(), mCurPostProcBufOut->cambuf->height());
+            mEptzThread->setMode(atoi(eptz_property_value));
+            mEptzThread->setOcclusionMode(atoi(occlusion_property_value));
+            mEptzThread->run("CamEPTZThread", PRIORITY_DISPLAY);
+        }
+    }
+    if (mEptzThread && mEptzThread->getMode() != atoi(eptz_property_value)){
+        if(atoi(eptz_property_value) == 0){
+            ALOGI("rk-debug: delete mEptzThread ************");
+            mEptzThread->runnable = false;
+            mEptzThread.clear();
+            mEptzThread = NULL;
+        }else{
+            mEptzThread->setMode(atoi(eptz_property_value));
+        }
+    }
+    RgaCropScale::CropScaleNV12Or21(&rgain, &rgaout);
+    return OK;
+}
+#endif
 
 bool RKISP2PostProcessUnit::checkFmt(CameraBuffer* in, CameraBuffer* out) {
     return true;
@@ -2079,39 +2153,6 @@ RKISP2PostProcessUnitDigitalZoom::processFrame(const std::shared_ptr<PostProcBuf
     rgain.offset_y = maptop;
     rgain.width_stride = in->cambuf->width();
     rgain.height_stride = in->cambuf->height();
-#ifdef RK_EPTZ
-//#ifdef RK_OCCLUSION
-    char occlusion_property_value[PROPERTY_VALUE_MAX] = {0};
-    property_get("vendor.camera.occlusion.enable", occlusion_property_value, "0");
-//#endif
-    char eptz_property_value[PROPERTY_VALUE_MAX] = {0};
-    property_get("vendor.camera.eptz.mode", eptz_property_value, "0");
-    if(nullptr != mEptzThread){
-        if(mEptzThread->runnable && mEptzThread->isInit){
-            mEptzThread->converData(rgain);
-            mEptzThread->calculateRect(&rgain);
-        }
-    }else{
-        if (atoi(eptz_property_value) != 0 || atoi(occlusion_property_value) != 0){
-            ALOGI("rk-debug mEptzThread create , name %s", mName);
-            mEptzThread = new EptzThread();
-            mEptzThread->setPreviewCfg(in->cambuf->width(), in->cambuf->height());
-            mEptzThread->setMode(atoi(eptz_property_value));
-            mEptzThread->setOcclusionMode(atoi(occlusion_property_value));
-            mEptzThread->run("CamEPTZThread", PRIORITY_DISPLAY);
-        }
-    }
-    if (mEptzThread && mEptzThread->getMode() != atoi(eptz_property_value)){
-        if(atoi(eptz_property_value) == 0){
-            ALOGI("rk-debug: delete mEptzThread ************");
-            mEptzThread->runnable = false;
-            mEptzThread.clear();
-            mEptzThread = NULL;
-        }else{
-            mEptzThread->setMode(atoi(eptz_property_value));
-        }
-    }
-#endif
     rgaout.fd = out->cambuf->dmaBufFd();
     if (out->cambuf->format() == HAL_PIXEL_FORMAT_YCrCb_NV12 ||
         out->cambuf->format() == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
