@@ -56,6 +56,7 @@ public:
     virtual ~SocCamFlashCtrUnit();
     int setFlashSettings(const CameraMetadata *settings);
     int updateFlashResult(CameraMetadata *result);
+    void setMeanLuma(float luma);
 private:  /* Methods */
     // prevent copy constructor and assignment operator
     SocCamFlashCtrUnit(const SocCamFlashCtrUnit& other);
@@ -68,6 +69,7 @@ private:  /* Methods */
     uint8_t mAeFlashMode;
     uint8_t mAeMode;
     uint8_t mAeState;
+    float mMeanLuma;
 };
 
 /**

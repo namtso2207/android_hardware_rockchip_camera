@@ -48,6 +48,7 @@ SocCamFlashCtrUnit::SocCamFlashCtrUnit(const char* name,
         mV4lFlashMode(V4L2_FLASH_LED_MODE_NONE),
         mAePreTrigger(0),
         mAeTrigFrms(0),
+        mMeanLuma(1.0f),
         mAeFlashMode(ANDROID_FLASH_MODE_OFF),
         mAeMode(ANDROID_CONTROL_AE_MODE_ON),
         mAeState(ANDROID_CONTROL_AE_STATE_INACTIVE)
@@ -64,6 +65,12 @@ SocCamFlashCtrUnit::~SocCamFlashCtrUnit()
       setV4lFlashMode(CAM_AE_FLASH_MODE_OFF, 100, 0, 0);
       mFlSubdev->close();
     }
+}
+
+void SocCamFlashCtrUnit::setMeanLuma(float luma)
+{
+    if (mAeTrigFrms == 0)
+        mMeanLuma = luma;
 }
 
 int SocCamFlashCtrUnit::setFlashSettings(const CameraMetadata *settings)
@@ -98,11 +105,11 @@ int SocCamFlashCtrUnit::setFlashSettings(const CameraMetadata *settings)
         flashMode = CAM_AE_FLASH_MODE_OFF;
 
     // TODO: set always on for soc now
-    if (flashMode == CAM_AE_FLASH_MODE_AUTO ||
+    /*if (flashMode == CAM_AE_FLASH_MODE_AUTO ||
         flashMode == CAM_AE_FLASH_MODE_SINGLE)
-        flashMode = CAM_AE_FLASH_MODE_ON;
+        flashMode = CAM_AE_FLASH_MODE_ON;*/
 
-    if (flashMode == CAM_AE_FLASH_MODE_ON) {
+    if (flashMode == CAM_AE_FLASH_MODE_ON || flashMode == CAM_AE_FLASH_MODE_AUTO) {
         entry = settings->find(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER);
         if (entry.count == 1) {
             if (!(entry.data.u8[0] == ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE
@@ -112,15 +119,22 @@ int SocCamFlashCtrUnit::setFlashSettings(const CameraMetadata *settings)
     }
 
     mAeState = ANDROID_CONTROL_AE_STATE_CONVERGED;
-    int setToDrvFlMode = flashMode;
+    int setToDrvFlMode = (flashMode == CAM_AE_FLASH_MODE_AUTO ||
+        flashMode == CAM_AE_FLASH_MODE_SINGLE) ? CAM_AE_FLASH_MODE_ON : flashMode;
     if (flashMode == CAM_AE_FLASH_MODE_TORCH)
         setToDrvFlMode = CAM_AE_FLASH_MODE_TORCH;
-    else if (flashMode == CAM_AE_FLASH_MODE_ON) {
+    else if (flashMode == CAM_AE_FLASH_MODE_ON
+        || (flashMode == CAM_AE_FLASH_MODE_AUTO)) {
         // assume SoC sensor has only torch flash mode, and for
         // ANDROID_CONTROL_CAPTURE_INTENT usecase, flash should keep
         // on until the jpeg image captured.
         if (mAePreTrigger == ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_START) {
-            setToDrvFlMode = CAM_AE_FLASH_MODE_TORCH;
+            if (flashMode == CAM_AE_FLASH_MODE_AUTO && mMeanLuma < 18.0f)
+                setToDrvFlMode = CAM_AE_FLASH_MODE_TORCH;
+            else if (flashMode == CAM_AE_FLASH_MODE_ON)
+                setToDrvFlMode = CAM_AE_FLASH_MODE_TORCH;
+            else
+                setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
             mAeState = ANDROID_CONTROL_AE_STATE_PRECAPTURE;
 
             mAeTrigFrms++;
@@ -477,7 +491,7 @@ RKISP2ControlUnit::init()
 
     const CameraHWInfo* camHwInfo = PlatformData::getCameraHWInfo();
     const struct SensorDriverDescriptor* sensorInfo = camHwInfo->getSensorDrvDes(mCameraId);
-    if (cap->sensorType() == SENSOR_TYPE_SOC &&
+    if (/*cap->sensorType() == SENSOR_TYPE_SOC &&*/
         sensorInfo->mFlashNum > 0 &&
         mFlashSupported) {
         mSocCamFlashCtrUnit = std::unique_ptr<SocCamFlashCtrUnit>(
@@ -1006,6 +1020,12 @@ RKISP2ControlUnit::processRequestForCapture(std::shared_ptr<RKISP2RequestCtrlSta
                 mStillCapSyncState = STILL_CAP_SYNC_STATE_WATING_JPEG_FRAME;
             }
 
+            if (mSocCamFlashCtrUnit.get()) {
+                int ret = mSocCamFlashCtrUnit->setFlashSettings(settings);
+                if (ret < 0)
+                    LOGE("%s:%d set flash settings failed", __FUNCTION__, __LINE__);
+            }
+
             LOGD("%s:%d, stillcap_sync_state %d",
                  __FUNCTION__, __LINE__, mStillCapSyncState);
         } else {
@@ -1126,6 +1146,10 @@ status_t RKISP2ControlUnit::fillMetadata(std::shared_ptr<RKISP2RequestCtrlState>
             ctrlUnitResult->update(ANDROID_CONTROL_AE_STATE, &aeState, 1);
         }
         reqState->mClMetaReceived = true;
+    } else {
+        if (mSocCamFlashCtrUnit.get()) {
+            mSocCamFlashCtrUnit->updateFlashResult(ctrlUnitResult);
+        }
     }
     return OK;
 }
@@ -1447,6 +1471,13 @@ RKISP2ControlUnit::metadataReceived(int id, const camera_metadata_t *metas) {
     entry = result.find(RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_NEEDED);
     if (entry.count == 1) {
         mStillCapSyncNeeded = !!entry.data.u8[0];
+    }
+
+    entry = result.find(RK_MEANLUMA_VALUE);
+    if (entry.count == 1) {
+        LOGD("metadataReceived meanluma:%f", entry.data.f[0]);
+    if (mSocCamFlashCtrUnit.get())
+        mSocCamFlashCtrUnit->setMeanLuma(entry.data.f[0]);
     }
 
     entry = result.find(RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD);
