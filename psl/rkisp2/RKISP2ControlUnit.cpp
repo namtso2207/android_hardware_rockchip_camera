@@ -171,8 +171,14 @@ int SocCamFlashCtrUnit::updateFlashResult(CameraMetadata *result)
 
     uint8_t flashState = ANDROID_FLASH_STATE_READY;
     if (mV4lFlashMode == V4L2_FLASH_LED_MODE_FLASH ||
-        mV4lFlashMode == V4L2_FLASH_LED_MODE_TORCH)
+        mV4lFlashMode == V4L2_FLASH_LED_MODE_TORCH) {
         flashState = ANDROID_FLASH_STATE_FIRED;
+
+        if (mAeMode >= ANDROID_CONTROL_AE_MODE_ON
+            && mAeFlashMode == ANDROID_FLASH_MODE_OFF) {
+           flashState = ANDROID_FLASH_STATE_PARTIAL;
+        }
+    }
 
     //# ANDROID_METADATA_Dynamic android.flash.state done
     result->update(ANDROID_FLASH_STATE, &flashState, 1);
