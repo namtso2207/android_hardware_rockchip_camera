@@ -180,6 +180,12 @@ int SocCamFlashCtrUnit::updateFlashResult(CameraMetadata *result)
         }
     }
 
+    /* Using android.flash.mode == TORCH or SINGLE will always return FIRED.*/
+    if (mAeFlashMode == ANDROID_FLASH_MODE_TORCH ||
+        mAeFlashMode == ANDROID_FLASH_MODE_SINGLE) {
+        ALOGD("%s:%d mAeFlashMode: %d, set flashState FIRED!", __FUNCTION__, __LINE__, mAeFlashMode);
+        flashState = ANDROID_FLASH_STATE_FIRED;
+    }
     //# ANDROID_METADATA_Dynamic android.flash.state done
     result->update(ANDROID_FLASH_STATE, &flashState, 1);
 
