@@ -2593,7 +2593,7 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
 
     //Dvp doesn't need this link
     if(mIsMipiInterface){
-        if (mipName.find("dphy2") != std::string::npos) {
+        if ((mipName.find("dphy2") != std::string::npos) && (mipName2.find("mipi") != std::string::npos)) {
             //for dual camera
             if(PlatformData::supportDualVideo()) {
                 addLinkParams(mipName, mipSrcPad, mipName2, csiSinkPad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
