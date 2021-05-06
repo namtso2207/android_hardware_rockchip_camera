@@ -205,12 +205,14 @@ int32_t FlashLight::setFlashMode(const int cameraId, int flashIdx, const bool mo
             LOGE("@%s : query falsh torch power failed", __FUNCTION__);
             return -ENOSYS;
         }
-
-        control.id = V4L2_CID_FLASH_TORCH_INTENSITY;
-        control.value = qctrl.default_value;
-        if (ioctl(mFlashFds[cameraId][flashIdx], VIDIOC_S_CTRL, &control, 0) < 0) {
-            LOGE("@%s : set flash intensity failed", __FUNCTION__);
-            return -ENOSYS;
+        LOGD(" qctrl.flags(0x%08x)", qctrl.flags);
+        if (qctrl.flags != V4L2_CTRL_FLAG_READ_ONLY) {
+            control.id = V4L2_CID_FLASH_TORCH_INTENSITY;
+            control.value = qctrl.default_value;
+            if (ioctl(mFlashFds[cameraId][flashIdx], VIDIOC_S_CTRL, &control, 0) < 0) {
+                LOGE("@%s : set flash intensity failed, may be not support set torch intensity.", __FUNCTION__);
+                return -ENOSYS;
+            }
         }
 
         memset(&control, 0, sizeof(control));
