@@ -65,8 +65,8 @@ void RKISP2FecUnit::loadDistortionGlLibray() {
          dlerror());
   }
   createGLClass = NULL;
-  if (createGLClass == NULL) 
-    createGLClass = (__createGLClass)dlsym(dso, "CreateGLContext");
+  if (createGLClass == NULL)
+    createGLClass = (__createGLClass)dlsym(dso, "createGLContext");
   if (createGLClass == NULL) {
     LOGE("rk_debug can't not find CreateGLClass function in "
          "/system/lib64/libbicubic_gl.so !");
