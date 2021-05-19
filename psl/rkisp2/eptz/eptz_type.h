@@ -54,6 +54,11 @@ typedef enum _EPTZ_RET {
   EPTZ_ERR_BAD = -1,
 } EPTZ_RET;
 
+typedef enum _EPTZ_ANIMATION {
+  EPTZ_LINEAR = 0,
+  EPTZ_NONLINEAR = 1,
+} EPTZ_EPTZ_ANIMATION;
+
 } /* namespace rkisp2 */
 } /* namespace camera2 */
 } /* namespace android */
