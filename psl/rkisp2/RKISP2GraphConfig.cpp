@@ -2606,7 +2606,6 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
                 addLinkParams("rkisp-csi-subdev", 4, "rkisp_rawwr2", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
                 addLinkParams("rkisp-csi-subdev", 5, "rkisp_rawwr3", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
 
-                addLinkParams("rkcif_mipi_lvds", 0, "rkisp-isp-subdev", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
                 addLinkParams("rkisp-isp-subdev", 2, "rkisp_mainpath", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
                 addLinkParams("rkisp-isp-subdev", 2, "rkisp_selfpath", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
             }
