@@ -60,6 +60,7 @@ class EptzThread : public android::Thread {
 
         bool runnable;
         bool isInit;
+        bool has_img_data;
         std::vector<DetectData> mDetectDatas;
         std::vector<sp<GraphicBuffer>> nnBufVecs;
         int mLastXY[4];

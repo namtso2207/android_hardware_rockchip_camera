@@ -51,6 +51,46 @@ typedef struct rockx_object_t {
 } rockx_object_t;
 
 /**
+ * @brief rockx_object_color_attribute_category
+ */
+typedef enum {
+    COAT_COLOR = 0,     ///< coat color
+    TROUSERS_COLOR,     ///< trousers color
+    CAR_COLOR           ///< car color
+} rockx_object_color_attribute_category;
+
+/**
+ * @brief rockx_object_color_attribute
+ */
+typedef enum{
+    BLACK = 0,
+    WHITE,
+    RED,
+    GRAY,
+    PURPLE,
+    YELLOW,
+    BLUE,
+    GREEN
+}rockx_object_color_attribute;
+
+/**
+ * @brief rockx_color_attribute_t
+ */
+typedef struct rockx_color_attribute_t {
+    rockx_object_color_attribute_category category;
+    int result_idx;
+    float attribute_score;
+} rockx_color_attribute_t;
+
+/**
+ * @brief rockx_color_attribute_array_t
+ */
+typedef struct rockx_color_attribute_array_t {
+    int count;                  ///< Array Count(0 <= count < 20)
+    rockx_color_attribute_t color_attribute[20];
+} rockx_color_attribute_array_t;
+
+/**
  * @brief Object Array Result
  */
 typedef struct rockx_object_array_t {
@@ -106,14 +146,25 @@ rockx_ret_t rockx_person_detect2(rockx_handle_t handle, rockx_image_t *in_img, i
 
 /**
  * IPC Object Detection
- * @param handle [in] Handle of a created ROCKX_MODULE_OBJECT_DETECTION_IPC module(created by @ref rockx_create)
+ * @param handle [in] Handle of a created ROCKX_MODULE_OBJECT_DETECTION_IPC module(created by @ref rockx_create), model input width=640, height=384
  * @param in_img [in] Input image
- * @param object_array [out] Detection Result, cls_idx 0: person, 1: face
+ * @param object_array [out] Detection Result, cls_idx 0: person, 1: face£¬2: car
  * @param callback [in] Async callback function pointer
  * @return @ref rockx_ret_t
  */
 rockx_ret_t rockx_object_detect_ipc(rockx_handle_t handle, rockx_image_t *in_img, rockx_object_array_t *object_array,
                               rockx_async_callback *callback);
+
+/**
+ * Object Attribute analysize
+ * @param handle [in] Handle of a created ROCKX_MODULE_OBJECT_ATTRIBUTE module(created by @ref rockx_create)
+ * @param in_img [in] Input image
+ * @param object_array [out] Detection Result, cls_idx 0: person, 1: face
+ * @param callback [in] Async callback function pointer
+ * @return @ref rockx_ret_t
+ */
+
+rockx_ret_t rockx_object_attribute_color(rockx_handle_t handle, rockx_image_t *in_img, rockx_object_t *in_object, rockx_color_attribute_array_t *color_attribute_array);
 
 #ifdef __cplusplus
 } //extern "C"

@@ -573,6 +573,10 @@ RKISP2PostProcessUnit::processFrame(const std::shared_ptr<PostProcBuffer>& in,
 status_t
 RKISP2PostProcessUnit::processEptzFrame(const std::shared_ptr<PostProcBuffer>& mCurPostProcBufOut) {
     LOGD("%s, @%s ", mName, __FUNCTION__);
+    if(!strcmp("JpegEnc",mName) || mBufType == 0){
+        ALOGI("rk-debug %s, name %s mBufType %d return", __FUNCTION__, mName, mBufType);
+        return OK;
+    }
     RgaCropScale::Params rgain, rgaout;
     rgain.fd = mCurPostProcBufOut->cambuf->dmaBufFd();
     if (mCurPostProcBufOut->cambuf->format() == HAL_PIXEL_FORMAT_YCrCb_NV12 ||

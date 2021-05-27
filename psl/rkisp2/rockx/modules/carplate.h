@@ -32,6 +32,9 @@ extern "C" {
 */
 extern const char* const CARPLATE_RECOG_CODE[83];
 
+extern const char* const CARPLATE_RECOG_V2_CODE[65];
+
+
 /**
  * @brief Car plate align Result (@ref rockx_carplate_align)
  */
@@ -79,6 +82,29 @@ rockx_ret_t rockx_carplate_align(rockx_handle_t handle, rockx_image_t *in_img, r
  */
 rockx_ret_t rockx_carplate_recognize(rockx_handle_t handle, rockx_image_t *aligned_img,
                                 rockx_carplate_recog_result_t *recog_result);
+
+/**
+ * Car Plate Correction Alignment V2
+ * @param handle [in] Handle of a created ROCKX_MODULE_CARPLATE_ALIGN_V2 module(created by @ref rockx_create)
+ * @param in_img [in] Input image
+ * @param detect_box [in] Carplat detection result box (get from @ref rockx_carplate_detect)
+ * @param aligned_tensor [out] Aligned tensor (remember to release aligned_tensor via rockx_tensor_release())
+ * @param aligned_result [out] Aligned result (remember to release aligned_image via rockx_image_release())
+ * @return @ref rockx_ret_t
+ */
+rockx_ret_t rockx_carplate_align_v2(rockx_handle_t handle, rockx_image_t *in_img, rockx_rect_t *detect_result_box,
+                                rockx_tensor_t *aligned_tensor,rockx_image_t *aligned_img);
+                                
+/**
+ * Car Plate Recognition V2
+ * @param handle [in] Handle of a created ROCKX_MODULE_CARPLATE_RECOG_V2 module(created by @ref rockx_create)
+ * @param in_tensor [in] Aligned float tensor of car plate (get from @ref rockx_carplate_align_v2)
+ * @param recog_result [out] Recognition result
+ * @return @ref rockx_ret_t
+ */
+rockx_ret_t rockx_carplate_recognize_v2(rockx_handle_t handle, rockx_tensor_t *in_tensor, 
+                                rockx_carplate_recog_result_t *recog_result);
+
 
 #ifdef __cplusplus
 } //extern "C"

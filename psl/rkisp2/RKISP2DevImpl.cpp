@@ -30,8 +30,11 @@ EptzThread::EptzThread()
 
 EptzThread::~EptzThread()
 {
-    isInit = false;
     runnable = false;
+    if(isInit){
+        isInit = false;
+        rockx_destroy(rockx_handle);
+    }
     mDetectDatas.clear();
     nnBufVecs.clear();
 }
@@ -109,6 +112,12 @@ bool EptzThread::threadLoop(){
             break;
         }
         mode = eptz_mode;
+    }
+    if(!has_img_data){
+        usleep(60*1000);
+        return true;
+    }else{
+        has_img_data = false;
     }
     //return true;
     sp<GraphicBuffer> buffer = nullptr;
@@ -291,8 +300,8 @@ void EptzThread::converData(RgaCropScale::Params rgain){
     eptzout.offset_y = rgain.offset_y;
     eptzout.width_stride = rgain.width_stride;
     eptzout.height_stride = rgain.height_stride;
-
     RgaCropScale::CropScaleNV12Or21(&rgain, &eptzout);
+    has_img_data = true;
 }
 
 void EptzThread::calculateRect(RgaCropScale::Params *rgain){
@@ -320,7 +329,6 @@ void EptzThread::calculateRect(RgaCropScale::Params *rgain){
         calculateClipRect(&eptz_ai_data, mLastXY, true, 5);
     }
     lk.unlock();
-
     rgain->fd = nnBufVecs[1]->handle->data[0];
     rgain->fmt = HAL_PIXEL_FORMAT_RGBA_8888;
     rgain->offset_x = mLastXY[0];

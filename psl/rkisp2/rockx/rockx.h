@@ -148,6 +148,9 @@ typedef enum {
     ROCKX_MODULE_HEAD_DETECTION_V2          = 31,   ///< head Detection V2
     ROCKX_MODULE_FACE_DETECTION_V2_HORIZONTAL = 32, ///< Face Detection V2 Horizontal Resolution
     ROCKX_MODULE_OBJECT_DETECTION_IPC = 33, ///< IPC Object (eg. person/vehicle) Detection
+    ROCKX_MODULE_OBJECT_ATTRIBUTE = 34, ///< IPC Object (eg. person/vehicle) Detection
+    ROCKX_MODULE_CARPLATE_ALIGN_V2      = 35,   ///< Car Plate Correct Alignment
+    ROCKX_MODULE_CARPLATE_RECOG_V2      = 36,   ///< Car Plate Recognition
 } rockx_module_t;
 
 /// Create A Rockx Module
