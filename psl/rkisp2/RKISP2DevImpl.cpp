@@ -60,7 +60,7 @@ void EptzThread::EptzInitCfg(int width, int height)
         nnBufVecs.push_back(buf);
     }
     ALOGI("rk-debug:EptzThread initCfg preview wh[%d %d]", width, height);
-    RockxInit("/vendor/etc/model/", "/sdcard/key.lic");
+    RockxInit("/vendor/etc/model/", "/vendor/etc/key.lic");
     EptzInit(width, height, width, height);
     isInit = true;
     ALOGI("rk-debug:new EptzThread initCfg success");
