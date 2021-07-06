@@ -7,7 +7,9 @@
 #define LOG_TAG "CameraBufferManager"
 
 #include <utils/Log.h>
-
+#if defined(ANDROID_VERSION_ABOVE_12_X)
+#include <hardware/hardware_rockchip.h>
+#endif
 
 #include "common/camera_buffer_manager_gralloc4_impl.h"
 #include <hwbinder/IPCThreadState.h>

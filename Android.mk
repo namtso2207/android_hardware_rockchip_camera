@@ -296,7 +296,6 @@ LOCAL_SHARED_LIBRARIES += \
     android.hardware.graphics.allocator@2.0 \
     android.hardware.graphics.allocator@3.0 \
     android.hardware.graphics.allocator@4.0 \
-    android.hardware.graphics.common-ndk_platform \
     android.hardware.graphics.common@1.2 \
     android.hardware.graphics.mapper@2.0 \
     android.hardware.graphics.mapper@2.1 \
@@ -307,7 +306,6 @@ LOCAL_SHARED_LIBRARIES += \
 
 LOCAL_HEADER_LIBRARIES += \
     android.hardware.graphics.common@1.2 \
-    android.hardware.graphics.common-ndk_platform \
     android.hardware.graphics.mapper@4.0 \
     libgralloctypes
 endif
@@ -323,6 +321,12 @@ endif
 ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 29)))
     LOCAL_CFLAGS += -DANDROID_VERSION_ABOVE_10_X
     LOCAL_CPPFLAGS += -std=c++1z
+ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 31)))
+    LOCAL_CFLAGS += -DANDROID_VERSION_ABOVE_12_X
+    LOCAL_CPPFLAGS += -Wno-unreachable-code-loop-increment
+    LOCAL_HEADER_LIBRARIES += \
+       libhardware_rockchip_headers
+endif
 
 ifeq ($(strip $(TARGET_BOARD_PLATFORM)),rk3368)
 ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 30)))

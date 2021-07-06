@@ -27,6 +27,10 @@
 #include "UtilityMacros.h"
 #include "PlatformData.h"
 #include "CameraMetadataHelper.h"
+#if defined(ANDROID_VERSION_ABOVE_12_X)
+#include <hardware/hardware_rockchip.h>
+#endif
+
 
 ////////////////////////////////////////////////////////////////////
 //                          PUBLIC METHODS

@@ -17,6 +17,10 @@
 #include "LogHelper.h"
 #include <utils/Singleton.h>
 #include <RockchipRga.h>
+#if defined(ANDROID_VERSION_ABOVE_12_X)
+#include <hardware/hardware_rockchip.h>
+#endif
+
 
 namespace android {
 namespace camera2 {

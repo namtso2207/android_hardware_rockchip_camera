@@ -26,6 +26,9 @@
 #include "LogHelper.h"
 #include "FormatUtils.h"
 #include "TuningServer.h"
+#if defined(ANDROID_VERSION_ABOVE_12_X)
+#include <hardware/hardware_rockchip.h>
+#endif
 
 #define ALIGN(value, x)	 ((value + (x-1)) & (~(x-1)))
 
