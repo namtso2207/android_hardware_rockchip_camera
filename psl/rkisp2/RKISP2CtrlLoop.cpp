@@ -37,8 +37,6 @@ NAMESPACE_DECLARATION {
 #define RK_3A_TUNING_FILE_PATH  "/etc/camera/rkisp2/"
 #endif
 
-static std::map<int, void*> sMap_aiq_ctx;
-
 RKISP2CtrlLoop::RKISP2CtrlLoop(int camId):
         mCameraId(camId),
         mIsStarted(false)
@@ -93,8 +91,6 @@ status_t RKISP2CtrlLoop::init(const char* sensorName,
 	setMulCamConc(mControlLoopCtx,true);
     }
 
-    sMap_aiq_ctx.insert(std::pair<int, void*>(mCameraId,mControlLoopCtx));
-
     return status;
 }
 
@@ -102,15 +98,7 @@ void RKISP2CtrlLoop::deinit()
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_INFO);
     PERFORMANCE_ATRACE_NAME("RKISP2CtrlLoop::deinit");
-    if (mIsStarted == true){
-        stop();
-    }
-
-    std::map<int, void*>::const_iterator it = sMap_aiq_ctx.begin();
-    for (; it != sMap_aiq_ctx.end(); ++it) {
-        rkisp_cl_deinit(it->second);
-    }
-    sMap_aiq_ctx.clear();
+    rkisp_cl_deinit(mControlLoopCtx);
     mControlLoopCtx = NULL;
 }
 
@@ -164,10 +152,7 @@ status_t RKISP2CtrlLoop::stop()
 
     int ret = 0;
 
-    std::map<int, void*>::const_iterator it = sMap_aiq_ctx.begin();
-    for (; it != sMap_aiq_ctx.end(); ++it) {
-        ret =  rkisp_cl_stop(it->second);
-    }
+    ret =  rkisp_cl_stop(mControlLoopCtx);
     if (ret < 0) {
         LOGE("%s: rkisp control loop stop failed !", __FUNCTION__);
         return UNKNOWN_ERROR;
