@@ -166,11 +166,16 @@ int EptzThread::RockxInit(char *model_path, char *licence_path){
     memset(&rockx_configs, 0, sizeof(rockx_config_t));
 
     LOGD("rk-debug rockx_add_config ROCKX_CONFIG_DATA_PATH=%s\n", model_path);
+#if defined(TARGET_RK3588)
+    rockx_add_config(&rockx_configs, ROCKX_CONFIG_DATA_PATH, model_path, strlen(model_path));
+    rockx_add_config(&rockx_configs, ROCKX_CONFIG_LICENCE_KEY_PATH, licence_path, strlen(licence_path));
+#else
     rockx_add_config(&rockx_configs, ROCKX_CONFIG_DATA_PATH, model_path);
     rockx_add_config(&rockx_configs, ROCKX_CONFIG_LICENCE_KEY_PATH, licence_path);
+#endif
     ret = rockx_create(&rockx_handle, ROCKX_MODULE_FACE_DETECTION_V2_HORIZONTAL, &rockx_configs, sizeof(rockx_config_t));
     if (ret != ROCKX_RET_SUCCESS) {
-        LOGE("rk-debug init rockx module %d error %d\n", ROCKX_MODULE_FACE_DETECTION_V2_HORIZONTAL, ret);
+        LOGE("rk-debug init rockx module error %d\n", ret);
         return ret;
     }else{
         ALOGI("rk-debug init rockx module success\n");
@@ -227,12 +232,14 @@ int EptzThread::RockxDetectOcclusion(void *in_data, int inWidth, int inHeight, i
     input_image.pixel_format = (rockx_pixel_format)inPixelFmt;
 
     int result = 0;
+#ifndef TARGET_RK3588
     // detect occlusion
     rockx_ret_t ret = rockx_image_detect_occlusion(&input_image, &result);
     if (ret != ROCKX_RET_SUCCESS) {
         LOGD("rk-debug rockx_face_detect error %d\n", ret);
         return -1;
     }
+#endif
     return result;
 
 }
@@ -248,20 +255,22 @@ void EptzThread::EptzInit(int mSrcWidth, int mSrcHeight, int mClipWidth, int mCl
     mEptzInfo.eptz_npu_height = npu_height;
     //V2远距离建议0.4，V3近距离建议0.6
     mEptzInfo.eptz_facedetect_score_shold = 0.40;
-    mEptzInfo.eptz_zoom_speed = 1;
-    mEptzInfo.eptz_fast_move_frame_judge = 5;
+    mEptzInfo.eptz_zoom_speed = 2;
+    mEptzInfo.eptz_ratio = 0.3;
+    mEptzInfo.eptz_fast_move_frame_judge = 3;
     mEptzInfo.eptz_zoom_frame_judge = 10;
-    mEptzInfo.eptz_threshold_x = 80;
-    mEptzInfo.eptz_threshold_y = 45;
+    mEptzInfo.eptz_threshold_x = 100;
+    mEptzInfo.eptz_threshold_y = 80;
+    mEptzInfo.eptz_animation = EPTZ_NONLINEAR;
     if (mEptzInfo.camera_dst_width >= 1920) {
-        mEptzInfo.eptz_iterate_x = 6;
-        mEptzInfo.eptz_iterate_y = 3;
+        mEptzInfo.eptz_iterate_x = 10;
+        mEptzInfo.eptz_iterate_y = 5;
     } else if (mEptzInfo.camera_dst_width >= 1280) {
+        mEptzInfo.eptz_iterate_x = 8;
+        mEptzInfo.eptz_iterate_y = 4;
+    } else {
         mEptzInfo.eptz_iterate_x = 6;
         mEptzInfo.eptz_iterate_y = 3;
-    } else {
-        mEptzInfo.eptz_iterate_x = 4;
-        mEptzInfo.eptz_iterate_y = 2;
     }
     ALOGI("rk-debug eptz_info src_wh [%d %d] dst_wh[%d %d], threshold_xy[%d %d] "
            "iterate_xy[%d %d] \n",
@@ -320,13 +329,13 @@ void EptzThread::calculateRect(RgaCropScale::Params *rgain){
                 eptz_ai_data.face_data[i].score = mDetectDatas[i].score;
             }
         }
-        calculateClipRect(&eptz_ai_data, mLastXY);
+        calculateClipRect(&eptz_ai_data, mLastXY, false, 0);
         if(eptz_ai_data.face_data)
             free(eptz_ai_data.face_data);
     }else{
         EptzAiData eptz_ai_data;
         eptz_ai_data.face_count = 0;
-        calculateClipRect(&eptz_ai_data, mLastXY, true, 5);
+        calculateClipRect(&eptz_ai_data, mLastXY, true, 8);
     }
     lk.unlock();
     rgain->fd = nnBufVecs[1]->handle->data[0];

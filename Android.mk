@@ -107,7 +107,7 @@ ISP_VERSION := rkisp1
 ifneq ($(filter rk1126 rk356x rk3588, $(strip $(TARGET_BOARD_PLATFORM))), )
   ISP_VERSION := rkisp2
 endif
-ifneq (,$(findstring rk356x,$(TARGET_BOARD_PLATFORM)))
+ifneq ($(filter rk356x rk3588, $(strip $(TARGET_BOARD_PLATFORM))), )
 ifeq ($(PRODUCT_HAVE_EPTZ),true)
   LOCAL_CFLAGS += -DRK_EPTZ
 endif
@@ -284,7 +284,7 @@ else
 LOCAL_SHARED_LIBRARIES += libjpeghwenc
 endif
 
-ifneq (,$(findstring rk356x,$(TARGET_BOARD_PLATFORM)))
+ifneq ($(filter rk356x rk3588, $(strip $(TARGET_BOARD_PLATFORM))), )
 ifeq ($(PRODUCT_HAVE_EPTZ),true)
 LOCAL_SHARED_LIBRARIES += \
     libeptz \
