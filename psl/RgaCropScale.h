@@ -37,9 +37,11 @@ class RgaCropScale {
         int fmt;
         /* just for src params */
         bool mirror;
-    };    
+        bool flip;
+        int rotation;
+    };
 
-    static int CropScaleNV12Or21(struct Params* in, struct Params* out);  
+    static int CropScaleNV12Or21(struct Params* in, struct Params* out);
 };
 
 } /* namespace camera2 */

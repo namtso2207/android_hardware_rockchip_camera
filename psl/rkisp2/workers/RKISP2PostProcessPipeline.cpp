@@ -1523,12 +1523,104 @@ RKISP2PostProcessUnitJpegEnc::processFrame(const std::shared_ptr<PostProcBuffer>
          mName, __FUNCTION__, procsettings->request->getId());
 
     inbuf->cambuf->dumpImage(CAMERA_DUMP_JPEG, "before_jpeg_converion_nv12");
+#ifdef RK_HW_JPEG_MIRROR_ROTATE
+    bool isFront = PlatformData::facing(mPipeline->getCameraId()) == CAMERA_FACING_FRONT;
+    bool flip = false;
+    bool mirror = false;
+    int rotation = 0;
+    if (isFront) {
+        const CameraMetadata *partRes = settings->request->getAndWaitforFilledResults(CONTROL_UNIT_PARTIAL_RESULT);
+        if (partRes == nullptr) {
+            LOGE("No partial result for EXIF in request.");
+        } else {
+            camera_metadata_ro_entry_t entry = partRes->find(ANDROID_JPEG_ORIENTATION);
+            if (entry.count == 1) {
+                int orientation = *entry.data.i32;
+                LOGE("PostProcessUnitJpegEnc jpeg orientation:%d", orientation);
+                if (orientation == 0 || orientation == 180) {
+                    mirror = true;
+                    flip = false;
+                } else if (orientation == 90 || orientation == 270) {
+                    mirror = false;
+                    flip = true;
+                }
+                LOGE("PostProcessUnitJpegEnc jpeg mirror:%d flip:%d", mirror, flip);
+            } else {
+                LOGE("No ANDROID_JPEG_ORIENTATION in results for EXIF");
+            }
+        }
+    }
+
+    std::shared_ptr<PostProcBuffer> tempBuf = NULL;
+    if (isFront) {
+        //alloc a temp buffer for rga flip data.
+        tempBuf = std::make_shared<PostProcBuffer> ();
+        int width = in->cambuf->width();
+        int height = in->cambuf->height();
+
+        tempBuf->cambuf = MemoryUtils::acquireOneBufferWithNoCache(mPipeline->getCameraId(), width, height);
+        tempBuf->request = in->request;
+
+        RgaCropScale::Params rgain, rgaout;
+
+        rgain.fd = in->cambuf->dmaBufFd();
+        if (in->cambuf->format() == HAL_PIXEL_FORMAT_YCrCb_NV12 ||
+            in->cambuf->v4l2Fmt() == V4L2_PIX_FMT_NV12)
+            rgain.fmt = HAL_PIXEL_FORMAT_YCrCb_NV12;
+        else
+            rgain.fmt = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+        rgain.vir_addr = (char*)in->cambuf->data();
+        rgain.mirror = mirror;
+        rgain.flip = flip;
+        rgain.rotation = rotation;
+        rgain.width = in->cambuf->width();
+        rgain.height = in->cambuf->height();
+        rgain.offset_x = 0;
+        rgain.offset_y = 0;
+        rgain.width_stride = in->cambuf->width();
+        rgain.height_stride = in->cambuf->height();
+
+        rgaout.fd = tempBuf->cambuf->dmaBufFd();
+        // HAL_PIXEL_FORMAT_YCbCr_420_888 buffer layout is the same as NV12
+        // in gralloc module implementation
+        if (tempBuf->cambuf->format() == HAL_PIXEL_FORMAT_YCrCb_NV12 ||
+            tempBuf->cambuf->format() == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
+            tempBuf->cambuf->v4l2Fmt() == V4L2_PIX_FMT_NV12)
+            rgaout.fmt = HAL_PIXEL_FORMAT_YCrCb_NV12;
+        else
+            rgaout.fmt = HAL_PIXEL_FORMAT_YCrCb_420_SP;
+        rgaout.vir_addr = (char*)tempBuf->cambuf->data();
+        rgaout.width = tempBuf->cambuf->width();
+        rgaout.height = tempBuf->cambuf->height();
+        rgaout.offset_x = 0;
+        rgaout.offset_y = 0;
+        rgaout.width_stride = tempBuf->cambuf->width();
+        rgaout.height_stride = tempBuf->cambuf->height();
+
+        if (RgaCropScale::CropScaleNV12Or21(&rgain, &rgaout)) {
+            LOGE("%s:  crop&scale by RGA failed...", __FUNCTION__);
+            PERFORMANCE_ATRACE_NAME("SWCropScale");
+            ImageScalerCore::cropComposeUpscaleNV12_bl(
+                             in->cambuf->data(), in->cambuf->height(), in->cambuf->width(),
+                             0, 0, in->cambuf->width(), in->cambuf->height(),
+                             out->cambuf->data(), out->cambuf->height(), out->cambuf->width(),
+                             0, 0, out->cambuf->width(), out->cambuf->height());
+        }
+
+    }
+#endif
     // JPEG encoding
     status = mJpegTask->handleMessageSettings(*procsettings.get());
     CheckError((status != OK), status, "@%s, set settings failed! [%d]!",
                __FUNCTION__, status);
-
+#ifdef RK_HW_JPEG_MIRROR_ROTATE
+    if (isFront)
+        status = convertJpeg(tempBuf->cambuf, outBuf->cambuf, outBuf->request);
+    else
+        status = convertJpeg(inbuf->cambuf, outBuf->cambuf, outBuf->request);
+#else
     status = convertJpeg(inbuf->cambuf, outBuf->cambuf, outBuf->request);
+#endif
     //caputre buffer already done with holding release fence, now signal
     //the release fence. In normal case, capture done should be called in
     //OutputFrameWorker::notifyNewFrame, but in order to speed up capture
@@ -1538,6 +1630,10 @@ RKISP2PostProcessUnitJpegEnc::processFrame(const std::shared_ptr<PostProcBuffer>
     outBuf->cambuf->captureDone(outBuf->cambuf, true);
 
     mCurPostProcBufOut.reset();
+#ifdef RK_HW_JPEG_MIRROR_ROTATE
+    if (tempBuf != NULL)
+        tempBuf.reset();
+#endif
     CheckError((status != OK), status, "@%s, JPEG conversion failed! [%d]!",
                __FUNCTION__, status);
 
@@ -2093,6 +2189,31 @@ RKISP2PostProcessUnitDigitalZoom::processFrame(const std::shared_ptr<PostProcBuf
     CameraWindow& crop = settings->cropRegion;
     int jpegBufCount = settings->request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB);
 
+    bool flip = false;
+    bool mirror = false;
+    int rotation = 0;
+#ifdef RK_HW_VIDEO_MIRROR_ROTATE
+    bool isFront = PlatformData::facing(mPipeline->getCameraId()) == CAMERA_FACING_FRONT;
+    bool isVideo = false;
+    int usage = out->cambuf->usage();
+    char value[128];
+    property_get("sys.camera.orientation", value, "0");
+    isVideo = CHECK_FLAG(usage, GRALLOC_USAGE_PRIVATE_1|GRALLOC_USAGE_PRIVATE_2)
+            && !CHECK_FLAG(usage, GRALLOC_USAGE_HW_TEXTURE);
+    LOGD("@%s :---zc RKISP2PostProcessUnitDigitalZoom isVideo:%d", __FUNCTION__, isVideo);
+    if(isVideo && isFront) {
+        int orientation = atoi(value);
+        LOGE("---zc PostProcessUnitDigitalZoom orientation:%d", orientation);
+        if (orientation == 180 || orientation == 0) {
+            mirror = true;
+            flip = false;
+        } if (orientation == 270 || orientation == 90) {
+            mirror = false;
+            flip = true;
+        }
+    }
+#endif
+
     bool mirror_handing = false;
 #ifdef MIRROR_HANDLING_FOR_FRONT_CAMERA
     //for front camera mirror handling
@@ -2156,7 +2277,9 @@ RKISP2PostProcessUnitDigitalZoom::processFrame(const std::shared_ptr<PostProcBuf
     else
         rgain.fmt = HAL_PIXEL_FORMAT_YCrCb_420_SP;
     rgain.vir_addr = (char*)in->cambuf->data();
-    rgain.mirror = mirror_handing;
+    rgain.mirror = mirror;
+    rgain.flip = flip;
+    rgain.rotation = rotation; 
     rgain.width = mapwidth;
     rgain.height = mapheight;
     rgain.offset_x = mapleft;
@@ -2172,7 +2295,6 @@ RKISP2PostProcessUnitDigitalZoom::processFrame(const std::shared_ptr<PostProcBuf
     else
         rgaout.fmt = HAL_PIXEL_FORMAT_YCrCb_420_SP;
     rgaout.vir_addr = (char*)out->cambuf->data();
-    rgaout.mirror = false;
     rgaout.width = out->cambuf->width();
     rgaout.height = out->cambuf->height();
     rgaout.offset_x = 0;

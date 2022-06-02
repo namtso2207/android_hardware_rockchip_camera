@@ -105,6 +105,7 @@ public:
     int width() {return mWidth; }
     int height() {return mHeight; }
     int stride() {return mStride; }
+    int usage() {return mUsage; }
     unsigned int size() {return mSize; }
     int format() {return mFormat; }
     int v4l2Fmt() {return mV4L2Fmt; }
