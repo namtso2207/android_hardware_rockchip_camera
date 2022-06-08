@@ -1634,6 +1634,7 @@ status_t CameraHWInfo::getAvailableSensorOutputFormats(int32_t cameraId,
     const char *devname;
     std::string sDevName;
     OutputFormats.clear();
+    struct v4l2_subdev_format aFormat;
 
     LOGI("@%s cameraId(%d) isFirst(%s)", __FUNCTION__, cameraId, isFirst?"true":"false");
     string sensorEntityName = "none";
@@ -1670,6 +1671,12 @@ status_t CameraHWInfo::getAvailableSensorOutputFormats(int32_t cameraId,
     if (ret != NO_ERROR) {
         LOGE("Error opening device (%s)", devname);
         return ret;
+    }
+
+    /* get sensor original format */
+    ret = device->getFormat(aFormat);
+    if (ret != NO_ERROR) {
+        LOGE("Error getFormat ret:%d (%s)", ret, devname);
     }
 
     std::vector<uint32_t> formats;
@@ -1720,6 +1727,11 @@ status_t CameraHWInfo::getAvailableSensorOutputFormats(int32_t cameraId,
              frameSize.max_width, frameSize.max_height, frameSize.left, frameSize.top);
         OutputFormats[iter->code].push_back(frameSize);
     }
+
+    //set sensor to original fmt
+    status = device->setFormat(aFormat.pad, aFormat.format.width,
+                               aFormat.format.height, aFormat.format.code,
+                               0, 0);
 
     if(!formats.size() || !fse.size()) {
         LOGE("@%s %s: Enum sensor frame size failed", __FUNCTION__, devname);
