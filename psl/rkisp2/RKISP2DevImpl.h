@@ -31,8 +31,12 @@
 #include <ui/GraphicBuffer.h>
 #include "RgaCropScale.h"
 #include "LogHelper.h"
-#include "rockx/rockx.h"
-#include "eptz/eptz_algorithm.h"
+#include "rockx.h"
+#include "modules/face.h"
+#include "eptz_algorithm.h"
+#if defined(ANDROID_VERSION_ABOVE_12_X)
+#include <hardware/hardware_rockchip.h>
+#endif
 
 namespace android {
 namespace camera2 {
