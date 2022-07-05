@@ -212,8 +212,8 @@ status_t ImgHWEncoder::encodeSync(EncodePackage & package)
     encInInfo.width = jpegw;
     encInInfo.height = jpegh;
     encInInfo.format = MpiJpegEncoder::INPUT_FMT_YUV420SP;
-    encInInfo.qLvl = 8;
-    encInInfo.thumbQLvl = 8;
+    encInInfo.qLvl = 80;
+    encInInfo.thumbQLvl = 80;
     // if not doThumb,please set doThumbNail,thumbW and thumbH to zero;
     if (exifMeta->mJpegSetting.thumbWidth && exifMeta->mJpegSetting.thumbHeight)
         encInInfo.doThumbNail = 1;
@@ -223,14 +223,7 @@ status_t ImgHWEncoder::encodeSync(EncodePackage & package)
          exifAttrs->enableThumb, encInInfo.doThumbNail);
     encInInfo.thumbWidth = exifMeta->mJpegSetting.thumbWidth;
     encInInfo.thumbHeight = exifMeta->mJpegSetting.thumbHeight;
-    // if thumbData is NULL, do scale, the type above can not be 420_P or
-    // 422_UYVY MppJpegEncInInfo.thumbData = NULL; MppJpegEncInInfo.thumbDataLen
-    // = 0; //don't care when thumbData is Null
-    encInInfo.thumbQLvl = thumbquality / 10;
-    if (encInInfo.thumbQLvl < 5)
-        encInInfo.thumbQLvl = 5;
-    if (encInInfo.thumbQLvl > 10)
-        encInInfo.thumbQLvl = 10;
+    encInInfo.thumbQLvl = thumbquality;
 
     fillRkExifInfo(mExifInfo, exifAttrs);
     mExifInfo.InputWidth = jpegw;
