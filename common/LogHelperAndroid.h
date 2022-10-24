@@ -21,6 +21,7 @@
 // System dependencies
 #include <utils/Log.h>
 #include "EnumPrinthelper.h"
+#include <cutils/properties.h>
 
 #define ENV_CAMERA_HAL_DEBUG  "persist.vendor.camera.debug"
 #define ENV_CAMERA_HAL_PERF   "persist.vendor.camera.perf"
@@ -149,6 +150,170 @@ void rk_camera_debug_close(void);
 #define HAL_TRACE_CALL_PRETTY(level) HAL_TRACE_NAME(level, __PRETTY_FUNCTION__)
 
 
+
+/* use a 64 bits value to represent all modules bug level, and the
+ * module bit maps is as follow:
+ *
+ * bit:      7-4                                       3-0
+ * meaning:  [sub modules]                             [level]
+ *
+ * bit:      15          14       13          12       11-8
+ * meaning:  [U]      [POOL]     [CAPTURE]       [FLASH]    [sub modules]
+ *
+ * bit:      23          22       21          20       19       18        17          16
+ * meaning:  [U]    [U]   [U]  [U]   [U]   [U]     [U]      [U]
+ *
+ * bit:      31          30       29          28       27       26        25          24
+ * meaning:  [U]    [U]    [U]       [U]   [U]  [U]  [U]   [U]
+ *
+ * bit:      39          38       37          36       35       34        33          32
+ * meaning:  [U]  [U]  [U]  [U]  [U]    [U]    [U]      [U]
+ *
+ * bit:      47          46       45          44       43       42        41          40
+ * meaning:  [U]         [U]      [U] [U]  [U]   [U]    [U]       [U]
+ *
+ * bit:     [63-48]
+ * meaning:  [U]
+ *
+ * [U] means unused now.
+ * [level]: use 4 bits to define log levels.
+ *     each module log has following ascending levels:
+ *          0: error
+ *          1: warning
+ *          2: info
+ *          3: debug
+ *          4: verbose
+ *          5: low1
+ *          6-7: unused, now the same as debug
+ * [sub modules]: use bits 4-11 to define the sub modules of each module, the
+ *     specific meaning of each bit is decided by the module itself. These bits
+ *     is designed to implement the sub module's log switch.
+ * [modules]: FLASH ...
+ *
+ * set debug level example:
+ * eg. set module flash log level to debug, and enable all sub modules of flash:
+ *    Android:
+ *      setprop persist.vendor.rkisp.log 0x1ff5
+ */
+
+int hal_get_log_level();
+void hal_print_log (int module, int sub_modules, const char *tag, int level, const char* format, ...);
+
+typedef struct hal_cam_log_module_info_s {
+    const char* module_name;
+    int log_level;
+    int sub_modules;
+} hal_cam_log_module_info_t;
+
+
+typedef enum {
+    HAL_LOG_LEVEL_NONE,
+    HAL_LOG_LEVEL_ERR,
+    HAL_LOG_LEVEL_WARNING,
+    HAL_LOG_LEVEL_INFO,
+    HAL_LOG_LEVEL_DEBUG,
+    HAL_LOG_LEVEL_VERBOSE,
+    HAL_LOG_LEVEL_LOW1,
+} hal_log_level_t;
+
+typedef enum {
+    HAL_LOG_MODULE_FLASH,
+    HAL_LOG_MODULE_CAP,
+    HAL_LOG_MODULE_POOL,
+    HAL_LOG_MODULE_MAX,
+} hal_log_modules_t;
+
+extern hal_cam_log_module_info_t g_hal_log_infos[HAL_LOG_MODULE_MAX];
+static unsigned long long g_cam_hal3_log_level = 0xff0;
+#define HAL_PROPERTY_VALUE_MAX 128
+#define HAL_MAX_STR_SIZE 4096
+
+// module debug
+#define HAL_MODULE_LOG_ERROR(module, submodules, format, ...)    \
+    do { \
+        hal_print_log(module, submodules, LOG_TAG, HAL_LOG_LEVEL_ERR, "E:" format "\n", ##__VA_ARGS__); \
+    } while (0)
+
+#define HAL_MODULE_LOG_WARNING(module, submodules, format, ...)   \
+    do { \
+        if (HAL_LOG_LEVEL_WARNING <= g_hal_log_infos[module].log_level && \
+                (submodules & g_hal_log_infos[module].sub_modules)) \
+            hal_print_log(module, submodules, LOG_TAG, HAL_LOG_LEVEL_WARNING, "W:" format "\n", \
+                           ##__VA_ARGS__);                                                \
+    } while (0)
+
+#define HAL_MODULE_LOG_INFO(module, submodules, format, ...)   \
+    do { \
+        if (HAL_LOG_LEVEL_INFO <= g_hal_log_infos[module].log_level && \
+                (submodules & g_hal_log_infos[module].sub_modules)) \
+            hal_print_log (module, submodules, LOG_TAG, HAL_LOG_LEVEL_INFO, "I:" format "\n",  ## __VA_ARGS__); \
+    } while(0)
+
+#define HAL_MODULE_LOG_DEBUG(module, submodules, format, ...)   \
+    do { \
+        if (HAL_LOG_LEVEL_DEBUG <= g_hal_log_infos[module].log_level && \
+            (submodules & g_hal_log_infos[module].sub_modules))                       \
+            hal_print_log(module, submodules, LOG_TAG, HAL_LOG_LEVEL_DEBUG, "D:" format "\n", \
+                           ##__VA_ARGS__);                                              \
+    } while(0)
+
+#define HAL_MODULE_LOG_VERBOSE(module, submodules, format, ...)   \
+    do { \
+        if (HAL_LOG_LEVEL_VERBOSE <= g_hal_log_infos[module].log_level && \
+                (submodules & g_hal_log_infos[module].sub_modules)) \
+            hal_print_log (module, submodules, LOG_TAG, HAL_LOG_LEVEL_VERBOSE, "XCAM VERBOSE %s:%d: " format "\n", __BI_FILENAME__ , __LINE__, ## __VA_ARGS__); \
+    } while(0) \
+
+#define HAL_MODULE_LOG_LOW1(module, submodules, format, ...)   \
+    do { \
+        if (HAL_LOG_LEVEL_LOW1 <= g_hal_log_infos[module].log_level && \
+                (submodules & g_hal_log_infos[module].sub_modules)) \
+          hal_print_log (module, submodules, LOG_TAG, HAL_LOG_LEVEL_LOW1, "XCAM LOW1 %s:%d: " format "\n", __BI_FILENAME__, __LINE__, ## __VA_ARGS__); \
+    } while(0)
+
+// define flash module logs
+#define LOGE_FLASH_SUBM(sub_modules, ...) HAL_MODULE_LOG_ERROR(HAL_LOG_MODULE_FLASH, sub_modules, ##__VA_ARGS__)
+#define LOGW_FLASH_SUBM(sub_modules, ...) HAL_MODULE_LOG_WARNING(HAL_LOG_MODULE_FLASH, sub_modules, ##__VA_ARGS__)
+#define LOGI_FLASH_SUBM(sub_modules, ...) HAL_MODULE_LOG_INFO(HAL_LOG_MODULE_FLASH, sub_modules, ##__VA_ARGS__)
+#define LOGD_FLASH_SUBM(sub_modules, ...) HAL_MODULE_LOG_DEBUG(HAL_LOG_MODULE_FLASH, sub_modules, ##__VA_ARGS__)
+#define LOGV_FLASH_SUBM(sub_modules, ...) HAL_MODULE_LOG_VERBOSE(HAL_LOG_MODULE_FLASH, sub_modules, ##__VA_ARGS__)
+#define LOG1_FLASH_SUBM(sub_modules, ...) HAL_MODULE_LOG_LOW1(HAL_LOG_MODULE_FLASH, sub_modules, ##__VA_ARGS__)
+
+#define LOGE_FLASH(...) LOGE_FLASH_SUBM(0xff, ##__VA_ARGS__)
+#define LOGW_FLASH(...) LOGW_FLASH_SUBM(0xff, ##__VA_ARGS__)
+#define LOGI_FLASH(...) LOGI_FLASH_SUBM(0xff, ##__VA_ARGS__)
+#define LOGD_FLASH(...) LOGD_FLASH_SUBM(0xff, ##__VA_ARGS__)
+#define LOGV_FLASH(...) LOGV_FLASH_SUBM(0xff, ##__VA_ARGS__)
+#define LOG1_FLASH(...) LOG1_FLASH_SUBM(0xff, ##__VA_ARGS__)
+
+// define capture module logs
+#define LOGE_CAP_SUBM(sub_modules, ...) HAL_MODULE_LOG_ERROR(HAL_LOG_MODULE_CAP, sub_modules, ##__VA_ARGS__)
+#define LOGW_CAP_SUBM(sub_modules, ...) HAL_MODULE_LOG_WARNING(HAL_LOG_MODULE_CAP, sub_modules, ##__VA_ARGS__)
+#define LOGI_CAP_SUBM(sub_modules, ...) HAL_MODULE_LOG_INFO(HAL_LOG_MODULE_CAP, sub_modules, ##__VA_ARGS__)
+#define LOGD_CAP_SUBM(sub_modules, ...) HAL_MODULE_LOG_DEBUG(HAL_LOG_MODULE_CAP, sub_modules, ##__VA_ARGS__)
+#define LOGV_CAP_SUBM(sub_modules, ...) HAL_MODULE_LOG_VERBOSE(HAL_LOG_MODULE_CAP, sub_modules, ##__VA_ARGS__)
+#define LOG1_CAP_SUBM(sub_modules, ...) HAL_MODULE_LOG_LOW1(HAL_LOG_MODULE_CAP, sub_modules, ##__VA_ARGS__)
+
+#define LOGE_CAP(...) LOGE_CAP_SUBM(0xff, ##__VA_ARGS__)
+#define LOGW_CAP(...) LOGW_CAP_SUBM(0xff, ##__VA_ARGS__)
+#define LOGI_CAP(...) LOGI_CAP_SUBM(0xff, ##__VA_ARGS__)
+#define LOGD_CAP(...) LOGD_CAP_SUBM(0xff, ##__VA_ARGS__)
+#define LOGV_CAP(...) LOGV_CAP_SUBM(0xff, ##__VA_ARGS__)
+#define LOG1_CAP(...) LOG1_CAP_SUBM(0xff, ##__VA_ARGS__)
+
+#define LOGE_POLL_SUBM(sub_modules, ...) HAL_MODULE_LOG_ERROR(HAL_LOG_MODULE_POOL, sub_modules, ##__VA_ARGS__)
+#define LOGW_POOL_SUBM(sub_modules, ...) HAL_MODULE_LOG_WARNING(HAL_LOG_MODULE_POOL, sub_modules, ##__VA_ARGS__)
+#define LOGI_POOL_SUBM(sub_modules, ...) HAL_MODULE_LOG_INFO(HAL_LOG_MODULE_POOL, sub_modules, ##__VA_ARGS__)
+#define LOGD_POOL_SUBM(sub_modules, ...) HAL_MODULE_LOG_DEBUG(HAL_LOG_MODULE_POOL, sub_modules, ##__VA_ARGS__)
+#define LOGV_POOL_SUBM(sub_modules, ...) HAL_MODULE_LOG_VERBOSE(HAL_LOG_MODULE_POOL, sub_modules, ##__VA_ARGS__)
+#define LOG1_POOL_SUBM(sub_modules, ...) HAL_MODULE_LOG_LOW1(HAL_LOG_MODULE_POOL, sub_modules, ##__VA_ARGS__)
+
+#define LOGE_POOL(...) LOGE_POOL_SUBM(0xff, ##__VA_ARGS__)
+#define LOGW_POOL(...) LOGW_POOL_SUBM(0xff, ##__VA_ARGS__)
+#define LOGI_POOL(...) LOGI_POOL_SUBM(0xff, ##__VA_ARGS__)
+#define LOGD_POOL(...) LOGD_POOL_SUBM(0xff, ##__VA_ARGS__)
+#define LOGV_POOL(...) LOGV_POOL_SUBM(0xff, ##__VA_ARGS__)
+#define LOG1_POOL(...) LOG1_POOL_SUBM(0xff, ##__VA_ARGS__)
 
 #else
 
