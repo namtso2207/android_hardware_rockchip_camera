@@ -131,8 +131,8 @@ status_t RKISP2FrameWorker::allocateWorkerBuffers()
     int dmaBufFd;
     unsigned long userptr;
     std::shared_ptr<CameraBuffer> buf = nullptr;
-    LOGD("@%s allocate format: %s size: %d %dx%d bytesperline: %d", __func__, v4l2Fmt2Str(mFormat.pixelformat()),
-            mFormat.sizeimage(), mFormat.width(), mFormat.height(), mFormat.bytesperline());
+    LOGD("@%s allocate format: %s size: %d %dx%d bytesperline: %d, memType(%d)", __func__, v4l2Fmt2Str(mFormat.pixelformat()),
+            mFormat.sizeimage(), mFormat.width(), mFormat.height(), mFormat.bytesperline(), memType);
     for (unsigned int i = 0; i < mPipelineDepth; i++) {
         switch (memType) {
         case V4L2_MEMORY_USERPTR:

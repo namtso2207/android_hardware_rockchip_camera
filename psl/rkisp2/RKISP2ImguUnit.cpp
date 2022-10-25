@@ -251,6 +251,7 @@ status_t
 RKISP2ImguUnit::configStreamsDone()
 {
     PERFORMANCE_ATRACE_NAME("RKISP2ImguUnit::configStreamsDone");
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     if(!mConfigChanged)
         return OK;
     /*
@@ -741,6 +742,8 @@ RKISP2ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
         LOGE("Request is nullptr");
         return BAD_VALUE;
     }
+
+    unsigned int numOutputBufs = request->getNumberOutputBufs();
     std::shared_ptr<DeviceMessage> tmp = std::make_shared<DeviceMessage>(msg);
     mMessagesPending.push_back(tmp);
 
@@ -756,7 +759,7 @@ RKISP2ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
      * handle them in the right order.
      */
     if (mCurPipeConfig->nodes.size() > 0)
-        status |= mPollerThread->pollRequest(request->getId(), 3000,
+        status |= mPollerThread->pollRequest(request->getId(), numOutputBufs, 3000,
                                              &(mCurPipeConfig->nodes));
     return status;
 }
@@ -867,6 +870,7 @@ RKISP2ImguUnit::kickstart()
 status_t
 RKISP2ImguUnit::startProcessing(DeviceMessage pollmsg)
 {
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     PERFORMANCE_ATRACE_CALL();
 
     status_t status = OK;

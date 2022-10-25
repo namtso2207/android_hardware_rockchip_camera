@@ -74,7 +74,7 @@ public:
                   IPollEventListener *observer,
                   int events = POLLPRI | POLLIN | POLLERR,
                   bool makeRealtime = true);
-    status_t pollRequest(int reqId, int timeout = EVENT_POLL_TIMEOUT,
+    status_t pollRequest(int reqId, int numOutputBufs = 0, int timeout = EVENT_POLL_TIMEOUT,
                          std::vector<std::shared_ptr<V4L2DeviceBase>> *devices = nullptr);
     status_t flush(bool sync = false, bool clear = false);
     status_t requestExitAndWait();
@@ -102,6 +102,7 @@ private:
 
     struct MessagePollRequest {
         unsigned int reqId;
+        unsigned int numOutputBufs;
         unsigned int timeout;
     };
 

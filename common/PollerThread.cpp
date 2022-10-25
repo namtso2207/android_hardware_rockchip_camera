@@ -154,7 +154,7 @@ exitInit:
  * params: request ID
  *
  */
-status_t PollerThread::pollRequest(int reqId, int timeout,
+status_t PollerThread::pollRequest(int reqId, int numOutputBufs, int timeout,
                                    std::vector<std::shared_ptr<V4L2DeviceBase>> *devices)
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
@@ -162,6 +162,8 @@ status_t PollerThread::pollRequest(int reqId, int timeout,
     msg.id = MESSAGE_ID_POLL_REQUEST;
     msg.data.request.reqId = reqId;
     msg.data.request.timeout = timeout;
+    msg.data.request.numOutputBufs = numOutputBufs;
+
     if (devices)
         msg.devices = *devices;
 
@@ -191,6 +193,10 @@ status_t PollerThread::handlePollRequest(Message &msg)
 
     do {
         PERFORMANCE_ATRACE_NAME("PollRequest");
+        if (msg.data.request.numOutputBufs >= 2) {
+            LOGD_CAP("@%s msg.data.request.reqId(%d) poll data start!", __FUNCTION__, msg.data.request.reqId);
+        }
+
         ret = V4L2DeviceBase::pollDevices(mPollingDevices, mActiveDevices,
                                           mInactiveDevices,
                                           msg.data.request.timeout, mFlushFd[0],
@@ -200,6 +206,10 @@ status_t PollerThread::handlePollRequest(Message &msg)
         } else {
             outMsg.id = IPollEventListener::POLL_EVENT_ID_EVENT;
         }
+        if (msg.data.request.numOutputBufs >= 2) {
+            LOGD_CAP("@%s msg.data.request.reqId(%d) poll data done!", __FUNCTION__, msg.data.request.reqId);
+        }
+
         outMsg.data.reqId = msg.data.request.reqId;
         outMsg.data.activeDevices = &mActiveDevices;
         outMsg.data.inactiveDevices = &mInactiveDevices;

@@ -358,6 +358,14 @@ status_t RKISP2OutputFrameWorker::run()
 
     LOGD("%s: %s, frame_id(%d), requestId(%d), index(%d)", __FUNCTION__, mName.c_str(), outBuf.vbuffer.sequence(), request->getId(), index);
 
+    if (request->getNumberOutputBufs() >=2) {
+        int64_t ts = (int64_t)outMsg.data.event.timestamp.tv_sec * 1000000000; // seconds to nanoseconds
+        ts += (int64_t)outMsg.data.event.timestamp.tv_usec * 1000; // microseconds to nanoseconds
+
+        LOGD_CAP("%s:%d, reqId: %d, tv_ns(%lld), done!",
+             __FUNCTION__, __LINE__, request->getId(), ts);
+    }
+
     if (status < 0)
         returnBuffers(true);
 
