@@ -49,6 +49,17 @@ class RKISP2SettingsProcessor;
 // Forward definitions to avoid extra includes
 class RKISP2IStreamConfigProvider;
 
+typedef enum StillCapSyncState_e {
+    STILL_CAP_SYNC_STATE_TO_ENGINE_IDLE,
+    STILL_CAP_SYNC_STATE_TO_ENGINE_PRECAP,
+    STILL_CAP_SYNC_STATE_FORCE_TO_ENGINE_PRECAP,
+    STILL_CAP_SYNC_STATE_FORCE_PRECAP_DONE,
+    STILL_CAP_SYNC_STATE_TO_ENGINE_START,
+    STILL_CAP_SYNC_STATE_WAITING_ENGINE_DONE,
+    STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE,
+    STILL_CAP_SYNC_STATE_WATING_JPEG_FRAME,
+    STILL_CAP_SYNC_STATE_JPEG_FRAME_DONE,
+} StillCapSyncState_e ;
 
 class SocCamFlashCtrUnit {
 public:
@@ -70,6 +81,37 @@ private:  /* Methods */
     uint8_t mAeMode;
     uint8_t mAeState;
     float mMeanLuma;
+};
+
+class RawCamFlashCtrUnit {
+public:
+    explicit RawCamFlashCtrUnit(const char* name, int CameraId);
+    virtual ~RawCamFlashCtrUnit();
+    int setFlashSettings(const CameraMetadata *settings);
+    int updateFlashResult(CameraMetadata *result);
+    void updateStillPreCapreqId(int reqId);
+    void setMeanLuma(float luma, int reqId);
+    void updateStillCapSyncState(StillCapSyncState_e stillCapSyncState);
+    void updateStillCapExpTime(int64_t ExposureTimens);
+    int setV4lFlashMode(int mode, int power, int timeout, int strobe);
+private:  /* Methods */
+    // prevent copy constructor and assignment operator
+    RawCamFlashCtrUnit(const RawCamFlashCtrUnit& other);
+    RawCamFlashCtrUnit& operator=(const RawCamFlashCtrUnit& other);
+    std::shared_ptr<V4L2Subdevice> mFlSubdev;
+    int mV4lFlashMode;
+    int mAeTrigFrms;
+    uint8_t mAeFlashMode;
+    uint8_t mAeMode;
+    uint8_t mLastAeFlashMode;
+    uint8_t mLastAeMode;
+    uint8_t mAeState;
+    float mMeanLuma;
+    StillCapSyncState_e mStillCapSyncState;
+    StillCapSyncState_e mLastStillCapSyncState;
+    int64_t mExposureTimens;
+    bool isInFlash;
+    int mStilCapPreCapreqId;
 };
 
 /**
@@ -130,6 +172,7 @@ public:  /* private types */
         int requestId;
         int64_t tv_sec;
         int64_t tv_usec;
+        int sof_syncId;
     };
 
     // union of all message data
@@ -187,10 +230,11 @@ private:  /* Methods */
     status_t completeProcessing(std::shared_ptr<RKISP2RequestCtrlState> &reqState);
     status_t acquireRequestStateStruct(std::shared_ptr<RKISP2RequestCtrlState>& state);
     status_t initStaticMetadata();
-    status_t metadataReceived(int id, const camera_metadata_t *metas);
+    status_t metadataReceived(int id, const camera_metadata_t *metas, int sof_frameId);
     status_t fillMetadata(std::shared_ptr<RKISP2RequestCtrlState> &reqState);
     status_t getDevicesPath();
     status_t processSoCSettings(const CameraMetadata *settings);
+    nsecs_t getFrameDuration(int id);
 
 private:  /* Members */
     SharedItemPool<RKISP2RequestCtrlState> mRequestStatePool;
@@ -249,25 +293,22 @@ private:  /* Members */
     std::map<enum DevPathType, std::string> mDevPathsMap;
     std::shared_ptr<V4L2Subdevice> mSensorSubdev;
     std::unique_ptr<SocCamFlashCtrUnit> mSocCamFlashCtrUnit;
+    std::unique_ptr<RawCamFlashCtrUnit> mRawCamFlashCtrUnit;
+
     /**
      * Static callback forwarding methods from CL to instance
      */
     static ::metadata_result_callback sMetadatCb;
     bool mStillCapSyncNeeded;
-    typedef enum StillCapSyncState_e {
-        STILL_CAP_SYNC_STATE_TO_ENGINE_IDLE,
-        STILL_CAP_SYNC_STATE_TO_ENGINE_PRECAP,
-        STILL_CAP_SYNC_STATE_FORCE_TO_ENGINE_PRECAP,
-        STILL_CAP_SYNC_STATE_FORCE_PRECAP_DONE,
-        STILL_CAP_SYNC_STATE_TO_ENGINE_START,
-        STILL_CAP_SYNC_STATE_WAITING_ENGINE_DONE,
-        STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE,
-        STILL_CAP_SYNC_STATE_WATING_JPEG_FRAME,
-        STILL_CAP_SYNC_STATE_JPEG_FRAME_DONE,
-    } StillCapSyncState_e ;
     StillCapSyncState_e mStillCapSyncState;
     int mFlushForUseCase;
     CameraMetadata mLatestCamMeta;
+    int64_t mExposureTimens;
+    nsecs_t mLastFpsTime;
+    nsecs_t mFrameTimens;
+    bool mSofSyncStae;
+    int mSofSyncId;
+    int mStilCapPreCapreqId;
 };  // class RKISP2ControlUnit
 
 const element_value_t CtlUMsg_stringEnum[] = {

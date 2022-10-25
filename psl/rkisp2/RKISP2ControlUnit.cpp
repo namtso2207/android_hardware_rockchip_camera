@@ -37,6 +37,7 @@
 
 USING_METADATA_NAMESPACE;
 static const int SETTINGS_POOL_SIZE = MAX_REQUEST_IN_PROCESS_NUM * 2;
+#define FLASH_OFFSET 8.0 //ms
 
 namespace android {
 namespace camera2 {
@@ -105,9 +106,9 @@ int SocCamFlashCtrUnit::setFlashSettings(const CameraMetadata *settings)
         flashMode = CAM_AE_FLASH_MODE_OFF;
 
     // TODO: set always on for soc now
-    /*if (flashMode == CAM_AE_FLASH_MODE_AUTO ||
+    if (flashMode == CAM_AE_FLASH_MODE_AUTO ||
         flashMode == CAM_AE_FLASH_MODE_SINGLE)
-        flashMode = CAM_AE_FLASH_MODE_ON;*/
+        flashMode = CAM_AE_FLASH_MODE_ON;
 
     if (flashMode == CAM_AE_FLASH_MODE_ON || flashMode == CAM_AE_FLASH_MODE_AUTO) {
         entry = settings->find(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER);
@@ -245,6 +246,221 @@ int SocCamFlashCtrUnit::setV4lFlashMode(int mode, int power, int timeout, int st
     return 0;
 }
 
+RawCamFlashCtrUnit::RawCamFlashCtrUnit(const char* name,
+                                       int CameraId) :
+        mFlSubdev(new V4L2Subdevice(name)),
+        mV4lFlashMode(V4L2_FLASH_LED_MODE_NONE),
+        isInFlash(false),
+        mAeTrigFrms(0),
+        mMeanLuma(1.0f),
+        mAeFlashMode(ANDROID_FLASH_MODE_OFF),
+        mAeMode(ANDROID_CONTROL_AE_MODE_ON),
+        mAeState(ANDROID_CONTROL_AE_STATE_INACTIVE)
+{
+    LOGD_FLASH("%s:%d", __FUNCTION__, __LINE__);
+    mStillCapSyncState = STILL_CAP_SYNC_STATE_TO_ENGINE_IDLE;
+    mLastStillCapSyncState = STILL_CAP_SYNC_STATE_TO_ENGINE_IDLE;
+    mStilCapPreCapreqId = -1;
+    if (mFlSubdev.get())
+        mFlSubdev->open();
+}
+
+RawCamFlashCtrUnit::~RawCamFlashCtrUnit()
+{
+    LOGD_FLASH("%s:%d", __FUNCTION__, __LINE__);
+    if (mFlSubdev.get()) {
+      setV4lFlashMode(CAM_AE_FLASH_MODE_OFF, 0, 0, 0);
+      mFlSubdev->close();
+    }
+}
+
+void RawCamFlashCtrUnit::updateStillPreCapreqId(int reqId) {
+    mStilCapPreCapreqId = reqId;
+}
+
+void RawCamFlashCtrUnit::setMeanLuma(float luma, int reqId)
+{
+        mMeanLuma = luma;
+}
+
+void RawCamFlashCtrUnit::updateStillCapSyncState(StillCapSyncState_e stillCapSyncState) {
+    mStillCapSyncState = stillCapSyncState;
+}
+
+void RawCamFlashCtrUnit::updateStillCapExpTime(int64_t ExposureTimens) {
+    mExposureTimens = ExposureTimens;
+}
+
+int RawCamFlashCtrUnit::setFlashSettings(const CameraMetadata *settings)
+{
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
+    int ret = 0;
+    int strobe = 0;
+
+    LOGD_FLASH("@%s enter!", __FUNCTION__);
+    // parse flash mode, ae mode, ae precap trigger
+    uint8_t aeMode = ANDROID_CONTROL_AE_MODE_ON;
+    camera_metadata_ro_entry entry = settings->find(ANDROID_CONTROL_AE_MODE);
+    if (entry.count == 1)
+        aeMode = entry.data.u8[0];
+
+    uint8_t flash_mode = ANDROID_FLASH_MODE_OFF;
+    entry = settings->find(ANDROID_FLASH_MODE);
+    if (entry.count == 1) {
+        flash_mode = entry.data.u8[0];
+    }
+
+    mAeFlashMode = flash_mode;
+    mAeMode = aeMode;
+
+#if 0
+    if ((mLastAeFlashMode == mAeFlashMode) && (mLastAeMode == mAeMode)) {
+        LOGD_FLASH("@%s:%d flash_mode & aeMode not changed, return!", __FUNCTION__);
+        return 0;
+    }
+
+    /* alreay in torch or flash, don't change flash state */
+    if (mLastStillCapSyncState == mStillCapSyncState) {
+        LOGD_FLASH("@%s alreay in torch or flash, don't change flash state!", __FUNCTION__);
+        return 0;
+    }
+#endif
+
+    // if aemode is *_flash, overide the flash mode of ANDROID_FLASH_MODE
+    int aeFlashMode = CAM_AE_FLASH_MODE_OFF;
+    if (aeMode == ANDROID_CONTROL_AE_MODE_ON_AUTO_FLASH)
+        aeFlashMode = CAM_AE_FLASH_MODE_AUTO;
+    else if (aeMode == ANDROID_CONTROL_AE_MODE_ON_ALWAYS_FLASH)
+        aeFlashMode = CAM_AE_FLASH_MODE_ON;
+    else if (flash_mode  == ANDROID_FLASH_MODE_TORCH)
+        aeFlashMode = CAM_AE_FLASH_MODE_TORCH;
+    else if (flash_mode  == ANDROID_FLASH_MODE_SINGLE)
+        aeFlashMode = CAM_AE_FLASH_MODE_SINGLE;
+    else
+        aeFlashMode = CAM_AE_FLASH_MODE_OFF;
+
+    int setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
+
+    LOGD_FLASH("%s:%d aeMode(%d), flash_mode(%d) aeFlashMode %d, setToDrvFlMode(%d)",
+         __FUNCTION__, __LINE__, aeMode, flash_mode, aeFlashMode, setToDrvFlMode);
+
+    if (aeFlashMode == CAM_AE_FLASH_MODE_TORCH) {
+        setToDrvFlMode = CAM_AE_FLASH_MODE_TORCH;
+    } else if (aeFlashMode == CAM_AE_FLASH_MODE_ON || (aeFlashMode == CAM_AE_FLASH_MODE_AUTO)) {
+        if (mStillCapSyncState == STILL_CAP_SYNC_STATE_TO_ENGINE_PRECAP) {
+            if (aeFlashMode == CAM_AE_FLASH_MODE_AUTO && mMeanLuma < 18.0f)
+                setToDrvFlMode = CAM_AE_FLASH_MODE_TORCH;
+            else if (aeFlashMode == CAM_AE_FLASH_MODE_ON)
+                setToDrvFlMode = CAM_AE_FLASH_MODE_TORCH;
+            else
+                setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
+            isInFlash = true;
+        } else if (mStillCapSyncState == STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE) {
+            /* not go into this*/
+            setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
+        } else if (mStillCapSyncState == STILL_CAP_SYNC_STATE_WATING_JPEG_FRAME) {
+            if (aeFlashMode == CAM_AE_FLASH_MODE_AUTO && mMeanLuma < 18.0f)
+                setToDrvFlMode = CAM_AE_FLASH_MODE_ON;
+            else if (aeFlashMode == CAM_AE_FLASH_MODE_ON)
+                setToDrvFlMode = CAM_AE_FLASH_MODE_ON;
+            strobe = 1;
+            isInFlash = true;
+        } else if (mStillCapSyncState == STILL_CAP_SYNC_STATE_JPEG_FRAME_DONE) {
+            setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
+            isInFlash = false;
+        }
+    } else {
+        setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
+    }
+    LOGD_FLASH("%s:%d mStillCapSyncState %d, setToDrvFlMode %d, isInFlash(%d)",
+         __FUNCTION__, __LINE__, mStillCapSyncState, setToDrvFlMode, isInFlash);
+
+    mLastStillCapSyncState = mStillCapSyncState;
+    return setV4lFlashMode(setToDrvFlMode, 100, 500, strobe);
+}
+
+int RawCamFlashCtrUnit::updateFlashResult(CameraMetadata *result)
+{
+    result->update(ANDROID_CONTROL_AE_MODE, &mAeMode, 1);
+    result->update(ANDROID_CONTROL_AE_STATE, &mAeState, 1);
+    result->update(ANDROID_FLASH_MODE, &mAeFlashMode, 1);
+
+    uint8_t flashState = ANDROID_FLASH_STATE_READY;
+    if (mV4lFlashMode == V4L2_FLASH_LED_MODE_FLASH ||
+        mV4lFlashMode == V4L2_FLASH_LED_MODE_TORCH) {
+        flashState = ANDROID_FLASH_STATE_FIRED;
+
+        if (mAeMode >= ANDROID_CONTROL_AE_MODE_ON
+            && mAeFlashMode == ANDROID_FLASH_MODE_OFF) {
+           flashState = ANDROID_FLASH_STATE_PARTIAL;
+        }
+    }
+
+    /* Using android.flash.mode == TORCH or SINGLE will always return FIRED.*/
+    if (mAeFlashMode == ANDROID_FLASH_MODE_TORCH ||
+        mAeFlashMode == ANDROID_FLASH_MODE_SINGLE) {
+        LOGD_FLASH("%s:%d mAeFlashMode: %d, set flashState FIRED!", __FUNCTION__, __LINE__, mAeFlashMode);
+        flashState = ANDROID_FLASH_STATE_FIRED;
+    }
+    //# ANDROID_METADATA_Dynamic android.flash.state done
+    result->update(ANDROID_FLASH_STATE, &flashState, 1);
+
+    return 0;
+}
+
+int RawCamFlashCtrUnit::setV4lFlashMode(int mode, int power, int fl_timeout, int strobe)
+{
+    struct v4l2_control control;
+    int fl_v4l_mode;
+
+#define set_fl_contol_to_dev(control_id,val) \
+        memset(&control, 0, sizeof(control)); \
+        control.id = control_id; \
+        control.value = val; \
+        if (mFlSubdev.get()) { \
+            if (pioctl(mFlSubdev->getFd(), VIDIOC_S_CTRL, &control, 0) < 0) { \
+                LOGE_FLASH(" set fl %s to %d failed", #control_id, val); \
+            } else {\
+                LOGD_FLASH("set fl %s to %d, success", #control_id, val); \
+            } \
+        } \
+
+    if (mode == CAM_AE_FLASH_MODE_OFF)
+        fl_v4l_mode = V4L2_FLASH_LED_MODE_NONE;
+    else if (mode == CAM_AE_FLASH_MODE_ON)
+        fl_v4l_mode = V4L2_FLASH_LED_MODE_FLASH;
+    else if (mode == CAM_AE_FLASH_MODE_TORCH)
+        fl_v4l_mode = V4L2_FLASH_LED_MODE_TORCH;
+    else {
+        LOGE(" set fl to mode  %d failed", mode);
+        return -1;
+    }
+
+    if (mV4lFlashMode == fl_v4l_mode)
+        return 0;
+
+    if (fl_v4l_mode == V4L2_FLASH_LED_MODE_NONE) {
+        set_fl_contol_to_dev(V4L2_CID_FLASH_LED_MODE, V4L2_FLASH_LED_MODE_NONE);
+    } else if (fl_v4l_mode == V4L2_FLASH_LED_MODE_FLASH) {
+        set_fl_contol_to_dev(V4L2_CID_FLASH_LED_MODE, V4L2_FLASH_LED_MODE_FLASH);
+        set_fl_contol_to_dev(V4L2_CID_FLASH_TIMEOUT, fl_timeout * 1000);
+        // TODO: should query intensity range before setting
+        /* set_fl_contol_to_dev(V4L2_CID_FLASH_INTENSITY, fl_intensity); */
+        set_fl_contol_to_dev(strobe ? V4L2_CID_FLASH_STROBE : V4L2_CID_FLASH_STROBE_STOP, 0);
+    } else if (fl_v4l_mode == V4L2_FLASH_LED_MODE_TORCH) {
+        // TODO: should query intensity range before setting
+        /* set_fl_contol_to_dev(V4L2_CID_FLASH_TORCH_INTENSITY, fl_intensity); */
+        set_fl_contol_to_dev(V4L2_CID_FLASH_LED_MODE, V4L2_FLASH_LED_MODE_TORCH);
+    } else {
+        LOGE_FLASH("setV4lFlashMode error fl mode %d", mode);
+        return -1;
+    }
+
+    mV4lFlashMode = fl_v4l_mode;
+
+    return 0;
+}
+
 RKISP2ControlUnit::RKISP2ControlUnit(RKISP2ImguUnit *thePU,
                          int cameraId,
                          RKISP2IStreamConfigProvider &aStreamCfgProv,
@@ -277,6 +493,11 @@ RKISP2ControlUnit::RKISP2ControlUnit(RKISP2ImguUnit *thePU,
         mFlushForUseCase(FLUSH_FOR_NOCHANGE)
 {
     cl_result_callback_ops::metadata_result_callback = &sMetadatCb;
+    mExposureTimens = 1000; //0.001ms
+    mFrameTimens = 33000000; //33ms
+    mSofSyncStae = false;
+    mSofSyncId = -1;
+    mStilCapPreCapreqId = -1;
 }
 
 status_t
@@ -504,14 +725,22 @@ RKISP2ControlUnit::init()
 
     const CameraHWInfo* camHwInfo = PlatformData::getCameraHWInfo();
     const struct SensorDriverDescriptor* sensorInfo = camHwInfo->getSensorDrvDes(mCameraId);
-    if (/*cap->sensorType() == SENSOR_TYPE_SOC &&*/
-        sensorInfo->mFlashNum > 0 &&
-        mFlashSupported) {
-        mSocCamFlashCtrUnit = std::unique_ptr<SocCamFlashCtrUnit>(
-                              new SocCamFlashCtrUnit(
-                              // TODO: support only one flash for SoC now
-                              sensorInfo->mModuleFlashDevName[0].c_str(),
-                              mCameraId));
+    if (sensorInfo->mFlashNum > 0 && mFlashSupported) {
+        if (cap->sensorType() == SENSOR_TYPE_SOC) {
+            mSocCamFlashCtrUnit = std::unique_ptr<SocCamFlashCtrUnit>(
+                                  new SocCamFlashCtrUnit(
+                                  // TODO: support only one flash for SoC now
+                                  sensorInfo->mModuleFlashDevName[0].c_str(),
+                                  mCameraId));
+            LOGD("use mSocCamFlashCtrUnit");
+        } else if (cap->sensorType() == SENSOR_TYPE_RAW) {
+            mRawCamFlashCtrUnit = std::unique_ptr<RawCamFlashCtrUnit>(
+                                  new RawCamFlashCtrUnit(
+                                  sensorInfo->mModuleFlashDevName[0].c_str(),
+                                  mCameraId));
+            LOGD("use mRawCamFlashCtrUnit");
+        }
+
     }
 
     return status;
@@ -593,7 +822,20 @@ void RKISP2RequestCtrlState::init(Camera3Request *req,
     if (entry.count == 1) {
         intent = entry.data.u8[0];
     }
-    LOGI("%s:%d: request id(%lld), capture_intent(%d)", __FUNCTION__, __LINE__, id, intent);
+
+    uint8_t AePreTrigger = ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE;
+    entry = settings->find(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER);
+    if (entry.count == 1) {
+        AePreTrigger = entry.data.u8[0];
+    }
+
+    uint8_t AeLock = ANDROID_CONTROL_AE_LOCK_OFF;
+    entry = settings->find(ANDROID_CONTROL_AE_LOCK);
+    if (entry.count == 1) {
+        AeLock = entry.data.u8[0];
+    }
+
+    LOGI("%s:%d: request id(%lld), ae_lock(%d) capture_intent(%d), ae_precapture_trigger(%d)", __FUNCTION__, __LINE__, id, AeLock, intent, AePreTrigger);
     ctrlUnitResult->update(ANDROID_CONTROL_CAPTURE_INTENT, entry.data.u8,
                                                            entry.count);
 }
@@ -631,12 +873,14 @@ status_t
 RKISP2ControlUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, bool configChanged)
 {
     PERFORMANCE_ATRACE_NAME("RKISP2ControlUnit::configStreams");
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     LOGI("@%s %d: configChanged :%d", __FUNCTION__, __LINE__, configChanged);
     status_t status = OK;
     if(configChanged) {
         // this will be necessary when configStream called twice without calling
         // destruct function which called in the close camera stack
         mLatestRequestId = -1;
+        mStilCapPreCapreqId = -1;
         mWaitingForCapture.clear();
         mSettingsHistory.clear();
 
@@ -974,26 +1218,41 @@ RKISP2ControlUnit::processRequestForCapture(std::shared_ptr<RKISP2RequestCtrlSta
             if (entry.count == 1) {
                 if (entry.data.u8[0] == ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_START) {
                     mStillCapSyncState = STILL_CAP_SYNC_STATE_TO_ENGINE_PRECAP;
+                    LOGD_CAP("@%s reqId(%d) AE_PRECAPTURE_TRIGGER state(%d), mStillCapSyncState(%d)", 
+                        __FUNCTION__, reqId, entry.data.u8[0], mStillCapSyncState);
+                    mStilCapPreCapreqId = reqId;
+                    if (mRawCamFlashCtrUnit.get())
+                        mRawCamFlashCtrUnit->updateStillPreCapreqId(mStilCapPreCapreqId);
                 }
+            }
+
+            entry =
+                settings->find(ANDROID_CONTROL_AE_STATE);
+            if (entry.count == 1) {
+                LOGD_CAP("@%s reqId(%d) ANDROID_CONTROL_AE_STATE state(%d), mStillCapSyncState(%d)",
+                      __FUNCTION__, reqId, entry.data.u8[0], mStillCapSyncState);
             }
 
             if(jpegBufCount == 0) {
                 uint8_t intent = ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW;
                 tempCamMeta.update(ANDROID_CONTROL_CAPTURE_INTENT, &intent, 1);
             } else {
+                LOGD_CAP("@%s(%d), reqId(%d)  mStillCapSyncState(%d)", __FUNCTION__, __LINE__, reqId, mStillCapSyncState);
                 if (mStillCapSyncNeeded) {
                     if (mStillCapSyncState == STILL_CAP_SYNC_STATE_TO_ENGINE_IDLE) {
-                        LOGD("forcely trigger ae precapture");
+                        LOGD_CAP("forcely trigger ae precapture");
                         uint8_t precap = ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_START;
                         tempCamMeta.update(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER, &precap, 1);
                         mStillCapSyncState = STILL_CAP_SYNC_STATE_TO_ENGINE_PRECAP;
                     }
                     if (mStillCapSyncState == STILL_CAP_SYNC_STATE_TO_ENGINE_PRECAP) {
-                        uint8_t stillCapSync = RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD_SYNCSTART;
-                        tempCamMeta.update(RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD, &stillCapSync, 1);
+                        uint8_t syncCmd = RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD_SYNCSTART;
+                        tempCamMeta.update(RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD, &syncCmd, 1);
                         mStillCapSyncState = STILL_CAP_SYNC_STATE_WAITING_ENGINE_DONE;
+                        LOGD_CAP("@%s(%d), reqId(%d), process still_cap_req set syncCmd to(%d), set mStillCapSyncState to(%d)", __FUNCTION__, __LINE__, reqId, syncCmd, mStillCapSyncState);
+
                     } else
-                        LOGW("already in stillcap_sync state %d",
+                        LOGW_CAP("already in stillcap_sync state %d",
                              mStillCapSyncState);
                 }
             }
@@ -1019,27 +1278,47 @@ RKISP2ControlUnit::processRequestForCapture(std::shared_ptr<RKISP2RequestCtrlSta
             int max_counts = 500;
             while (mStillCapSyncState == STILL_CAP_SYNC_STATE_WAITING_ENGINE_DONE &&
                    max_counts > 0) {
-                LOGD("waiting for stillcap_sync_done");
+                LOGD_CAP("waiting for stillcap_sync_done");
                 usleep(10*1000);
                 max_counts--;
             }
 
             if (max_counts == 0) {
                 mStillCapSyncState = STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE;
-                LOGW("waiting for stillcap_sync_done timeout!");
+                LOGD_CAP("waiting for stillcap_sync_done timeout!");
             }
 
-            if (mStillCapSyncState == STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE) {
-                mStillCapSyncState = STILL_CAP_SYNC_STATE_WATING_JPEG_FRAME;
+            /* if flash current is sof, now start flash */
+            if(jpegBufCount != 0 && (mStillCapSyncState == STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE)) {
+                while (!mSofSyncStae &&
+                       max_counts > 0) {
+                    LOGD_CAP("waiting for SOF received!");
+                    usleep(10*1000);
+                    max_counts--;
+                }
+               mStillCapSyncState = STILL_CAP_SYNC_STATE_WATING_JPEG_FRAME;
+               LOGD_CAP("%s:%d set mStillCapSyncState to (%d).", __FUNCTION__, __LINE__, mStillCapSyncState);
             }
 
-            if (mSocCamFlashCtrUnit.get()) {
-                int ret = mSocCamFlashCtrUnit->setFlashSettings(settings);
+            if (mRawCamFlashCtrUnit.get()) {
+                mRawCamFlashCtrUnit->updateStillCapSyncState(mStillCapSyncState);
+                int ret = mRawCamFlashCtrUnit->setFlashSettings(settings);
                 if (ret < 0)
-                    LOGE("%s:%d set flash settings failed", __FUNCTION__, __LINE__);
+                    LOGE_FLASH("%s:%d set flash settings failed", __FUNCTION__, __LINE__);
+
+                /*add delay = frameduration - exptime - FLASH_OFFSET, for start main Flash*/
+                if (mStillCapSyncState == STILL_CAP_SYNC_STATE_WATING_JPEG_FRAME && jpegBufCount) {
+                    nsecs_t delayns = mFrameTimens - mExposureTimens - FLASH_OFFSET * 1000 * 1000;
+                    LOGD_FLASH("%s:%d delayns(%lld)ns, mStillCapSyncState(%d).", __FUNCTION__, __LINE__, delayns, mStillCapSyncState);
+                    /* if current frame not support exp_t, flash two frame to guarantee exposure time */
+                    if (delayns < 0)
+                        delayns = mFrameTimens * 1.1;
+                    usleep(delayns/1000);
+                    LOGD_FLASH("%s:%d delayns(%lld)ns, mStillCapSyncState(%d).", __FUNCTION__, __LINE__, delayns, mStillCapSyncState);
+                }
             }
 
-            LOGD("%s:%d, stillcap_sync_state %d",
+            LOGD_CAP("%s:%d, mStillCapSyncState %d",
                  __FUNCTION__, __LINE__, mStillCapSyncState);
         } else {
             // set SoC sensor's params
@@ -1160,8 +1439,8 @@ status_t RKISP2ControlUnit::fillMetadata(std::shared_ptr<RKISP2RequestCtrlState>
         }
         reqState->mClMetaReceived = true;
     } else {
-        if (mSocCamFlashCtrUnit.get()) {
-            mSocCamFlashCtrUnit->updateFlashResult(ctrlUnitResult);
+        if (mRawCamFlashCtrUnit.get()) {
+            mRawCamFlashCtrUnit->updateFlashResult(ctrlUnitResult);
         }
     }
     return OK;
@@ -1276,6 +1555,7 @@ RKISP2ControlUnit::handleNewShutter(Message &msg)
     if (jpegBufCount &&
         (mStillCapSyncState == STILL_CAP_SYNC_STATE_WATING_JPEG_FRAME)) {
         mStillCapSyncState = STILL_CAP_SYNC_STATE_JPEG_FRAME_DONE;
+        mSofSyncStae = false;
 
         status_t status = OK;
         const CameraMetadata *settings = reqState->request->getSettings();
@@ -1289,16 +1569,16 @@ RKISP2ControlUnit::handleNewShutter(Message &msg)
         frame_metas.id = -1;
         status = mCtrlLoop->setFrameParams(&frame_metas);
         if (status != OK)
-            LOGE("CtrlLoop setFrameParams error");
+            LOGE_CAP("CtrlLoop setFrameParams error");
 
         /* status = settings->unlock(frame_metas.metas); */
         status = tempCamMeta.unlock(frame_metas.metas);
         if (status != OK) {
-            LOGE("unlock frame frame_metas failed");
+            LOGE_CAP("unlock frame frame_metas failed");
             return UNKNOWN_ERROR;
         }
-        LOGD("%s:%d, stillcap_sync_state %d",
-             __FUNCTION__, __LINE__, mStillCapSyncState);
+        LOGD_CAP("%s:%d, reqId: %d, stillcap_sync_state %d",
+             __FUNCTION__, __LINE__, reqId, mStillCapSyncState);
     }
 
     int64_t ts = msg.data.shutter.tv_sec * 1000000000; // seconds to nanoseconds
@@ -1315,6 +1595,10 @@ RKISP2ControlUnit::handleNewShutter(Message &msg)
     reqState->shutterDone = true;
     reqState->captureSettings->timestamp = ts;
     mShutterDoneReqId = reqId;
+
+    if (jpegBufCount)
+        LOGD_CAP("%s:%d, reqId: %d, tv_ns(%lld), buf_sequence(%d) done!",
+             __FUNCTION__, __LINE__, reqId, ts, msg.data.shutter.sof_syncId);
 
     return NO_ERROR;
 }
@@ -1452,6 +1736,7 @@ RKISP2ControlUnit::notifyCaptureEvent(CaptureMessage *captureMsg)
             msg.data.shutter.requestId = captureMsg->data.event.reqId;
             msg.data.shutter.tv_sec = captureMsg->data.event.timestamp.tv_sec;
             msg.data.shutter.tv_usec = captureMsg->data.event.timestamp.tv_usec;
+            msg.data.shutter.sof_syncId = captureMsg->data.event.sequence;
             mMessageQueue.send(&msg, MESSAGE_ID_NEW_SHUTTER);
             break;
         case CAPTURE_EVENT_NEW_SOF:
@@ -1471,47 +1756,87 @@ RKISP2ControlUnit::notifyCaptureEvent(CaptureMessage *captureMsg)
     return true;
 }
 
+nsecs_t RKISP2ControlUnit::getFrameDuration(int id)
+{
+    double fps = 0;
+    nsecs_t now = systemTime();
+    nsecs_t diff = now - mLastFpsTime;
+
+    LOGD("%s:%d, reqId(%d) FrameDuration: %" PRId64 "ns",
+         __FUNCTION__, __LINE__, id, diff);
+
+    mLastFpsTime = now;
+
+    return diff;
+}
+
 status_t
-RKISP2ControlUnit::metadataReceived(int id, const camera_metadata_t *metas) {
+RKISP2ControlUnit::metadataReceived(int id, const camera_metadata_t *metas, int sof_frameId) {
     Message msg;
     status_t status = NO_ERROR;
     camera_metadata_entry entry;
     static std::map<int,uint8_t> sLastAeStateMap;
+    static bool flash_on = true;
+
+    /* id = -2, just for sync sof for flash control */
+    if (-2 == id) {
+        mFrameTimens = getFrameDuration(id);
+        if (mStillCapSyncState == STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE) {
+            mSofSyncStae = true;
+            mSofSyncId = sof_frameId;
+            LOGD_FLASH("%s:%d get flash_sof_sync, sof_frameId(%d) !.", __FUNCTION__, __LINE__, mSofSyncId);
+        }
+        return status;
+    }
 
     CameraMetadata result(const_cast<camera_metadata_t*>(metas));
     entry = result.find(RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_NEEDED);
     if (entry.count == 1) {
         mStillCapSyncNeeded = !!entry.data.u8[0];
+        LOGD_CAP("%s:%d, mStillCapSyncNeeded %d",
+             __FUNCTION__, __LINE__, mStillCapSyncNeeded);
     }
 
     entry = result.find(RK_MEANLUMA_VALUE);
     if (entry.count == 1) {
-        LOGD("metadataReceived meanluma:%f", entry.data.f[0]);
-    if (mSocCamFlashCtrUnit.get())
-        mSocCamFlashCtrUnit->setMeanLuma(entry.data.f[0]);
+        LOGD_FLASH("metadataReceived meanluma:%f", entry.data.f[0]);
+        if (mRawCamFlashCtrUnit.get()) {
+            if (mStillCapSyncState == STILL_CAP_SYNC_STATE_TO_ENGINE_IDLE)
+                mRawCamFlashCtrUnit->setMeanLuma(entry.data.f[0], id);
+        }
     }
 
     entry = result.find(RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD);
     if (entry.count == 1) {
+        LOGD_FLASH("metadataReceived RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD:%d", entry.data.u8[0]);
         if (entry.data.u8[0] == RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD_SYNCDONE &&
             (mStillCapSyncState == STILL_CAP_SYNC_STATE_WAITING_ENGINE_DONE ||
-             mFlushForUseCase == FLUSH_FOR_STILLCAP))
+             mFlushForUseCase == FLUSH_FOR_STILLCAP)) {
             mStillCapSyncState = STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE;
-            LOGD("%s:%d, stillcap_sync_state %d",
-                 __FUNCTION__, __LINE__, mStillCapSyncState);
+            LOGD("%s:%d, reqid(%d) set mStillCapSyncState to %d",
+                 __FUNCTION__, __LINE__, id, mStillCapSyncState);
+        }
     }
 
     entry = result.find(ANDROID_CONTROL_AE_STATE);
     if (entry.count == 1) {
-        if (id == -1 && entry.data.u8[0] == ANDROID_CONTROL_AE_STATE_CONVERGED &&
-            mStillCapSyncState == STILL_CAP_SYNC_STATE_FORCE_TO_ENGINE_PRECAP &&
-            sLastAeStateMap[mCameraId] == ANDROID_CONTROL_AE_STATE_PRECAPTURE) {
-            mStillCapSyncState = STILL_CAP_SYNC_STATE_FORCE_PRECAP_DONE;
-            sLastAeStateMap[mCameraId] = 0;
-            LOGD("%s:%d, stillcap_sync_state %d",
+        LOGD_FLASH("reqid(%d) metadataReceived ANDROID_CONTROL_AE_STATE:%d", id, entry.data.u8[0]);
+        if (entry.data.u8[0] == ANDROID_CONTROL_AE_STATE_CONVERGED &&
+            mStillCapSyncState == STILL_CAP_SYNC_STATE_TO_ENGINE_PRECAP) {
+            LOGD_FLASH("%s:%d, mStillCapSyncState %d",
                  __FUNCTION__, __LINE__, mStillCapSyncState);
+
+            //get ae coveraged sensor.exposureTime
+            entry = result.find(ANDROID_SENSOR_EXPOSURE_TIME);
+            if (entry.count == 1) {
+                mExposureTimens = entry.data.i64[0];
+                LOGD_FLASH("%s:%d,  reqid(%d) exposure_time %" PRId64 "ns",
+                     __FUNCTION__, __LINE__, id, mExposureTimens);
+            }
+        } else {
+            LOGD_FLASH("reqid(%d) metadataReceived ANDROID_CONTROL_AE_STATE:%d, mStillCapSyncState(%d)",
+                    id, entry.data.u8[0], mStillCapSyncState);
         }
-        sLastAeStateMap[mCameraId] = entry.data.u8[0];
     }
 
     result.release();
@@ -1580,7 +1905,7 @@ void RKISP2ControlUnit::sMetadatCb(const struct cl_result_callback_ops* ops,
 
     RKISP2ControlUnit *ctl = const_cast<RKISP2ControlUnit*>(static_cast<const RKISP2ControlUnit*>(ops));
 
-    ctl->metadataReceived(result->id, result->metas);
+    ctl->metadataReceived(result->id, result->metas, result->sof_frameId);
     // if(pserver && pserver->isTuningMode()){
     //     CameraMetadata uvcCamMeta(const_cast<camera_metadata_t*>(result->metas));
     //     pserver->get_tuning_params(uvcCamMeta);
