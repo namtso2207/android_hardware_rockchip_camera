@@ -179,7 +179,7 @@ void RKISP2ImguUnit::clearWorkers()
 }
 
 status_t
-RKISP2ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, bool configChanged)
+RKISP2ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, bool configChanged, bool isStillStream)
 {
     PERFORMANCE_ATRACE_NAME("RKISP2ImguUnit::configStreams");
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
@@ -188,6 +188,7 @@ RKISP2ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, boo
     std::shared_ptr<RKISP2GraphConfig> graphConfig = mGCM.getBaseGraphConfig();
 
     mConfigChanged = configChanged;
+    mIsStillChangeStream = isStillStream;
     mActiveStreams.blobStreams.clear();
     mActiveStreams.rawStreams.clear();
     mActiveStreams.yuvStreams.clear();
@@ -276,9 +277,12 @@ RKISP2ImguUnit::configStreamsDone()
     // captured to dummy buffer.
     const RKISP2CameraCapInfo *cap = getRKISP2CameraCapInfo(mCameraId);
     int skipFrames = cap->frameInitialSkip();
-    LOGD("@%s : skipFrames: %d, sensorFrameDuration: %d", __FUNCTION__, skipFrames, duration);
-    usleep(skipFrames * duration * 1000);
-
+    if (!mIsStillChangeStream) {
+        usleep(skipFrames * duration * 1000);
+        LOGD("@%s : skipFrames: %d, sensorFrameDuration: %d", __FUNCTION__, skipFrames, duration);
+    } else {
+        LOGD_CAP("@%s : no need skipFrames for still cap!", __FUNCTION__);
+    }
     return status;
 }
 
