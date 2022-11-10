@@ -626,13 +626,13 @@ status_t RKISP2CameraHw::doConfigureStreams(UseCase newUseCase,
                         newUseCase == USECASE_STILL ? RKISP2ControlUnit::FLUSH_FOR_STILLCAP :
                         RKISP2ControlUnit::FLUSH_FOR_PREVIEW);
 
-    status = mImguUnit->configStreams(streams, mConfigChanged);
+    status = mImguUnit->configStreams(streams, mConfigChanged, newUseCase == USECASE_STILL);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream for imgunit");
         return status;
     }
 
-    status = mControlUnit->configStreams(streams, mConfigChanged);
+    status = mControlUnit->configStreams(streams, mConfigChanged, newUseCase == USECASE_STILL);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream for controlunit");
         return status;

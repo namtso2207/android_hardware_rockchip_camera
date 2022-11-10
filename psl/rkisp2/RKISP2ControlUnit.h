@@ -94,6 +94,8 @@ public:
     void updateStillCapSyncState(StillCapSyncState_e stillCapSyncState);
     void updateStillCapExpTime(int64_t ExposureTimens);
     int setV4lFlashMode(int mode, int power, int timeout, int strobe);
+    int setStillChangeFlash(void);
+
 private:  /* Methods */
     // prevent copy constructor and assignment operator
     RawCamFlashCtrUnit(const RawCamFlashCtrUnit& other);
@@ -110,7 +112,7 @@ private:  /* Methods */
     StillCapSyncState_e mStillCapSyncState;
     StillCapSyncState_e mLastStillCapSyncState;
     int64_t mExposureTimens;
-    bool isInFlash;
+    bool isNeedFlash;
     int mStilCapPreCapreqId;
 };
 
@@ -133,7 +135,7 @@ public:
     virtual ~RKISP2ControlUnit();
 
     status_t init();
-    status_t configStreams(std::vector<camera3_stream_t*> &activeStreams, bool configChanged);
+    status_t configStreams(std::vector<camera3_stream_t*> &activeStreams, bool configChanged, bool isStillStream);
 
     status_t processRequest(Camera3Request* request,
                             std::shared_ptr<RKISP2GraphConfig> graphConfig);
@@ -309,6 +311,7 @@ private:  /* Members */
     bool mSofSyncStae;
     int mSofSyncId;
     int mStilCapPreCapreqId;
+    bool mIsStillChangeStream;
 };  // class RKISP2ControlUnit
 
 const element_value_t CtlUMsg_stringEnum[] = {

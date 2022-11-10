@@ -46,7 +46,7 @@ public:
             std::shared_ptr<MediaController> sensorMediaCtl, std::shared_ptr<MediaController> imgMediaCtl);
     virtual ~RKISP2ImguUnit();
     status_t flush(void);
-    status_t configStreams(std::vector<camera3_stream_t*> &activeStreams, bool configChanged);
+    status_t configStreams(std::vector<camera3_stream_t*> &activeStreams, bool configChanged, bool isStillStream);
     status_t configStreamsDone();
     void cleanListener();
     status_t completeRequest(std::shared_ptr<RKISP2ProcUnitSettings> &processingSettings,
@@ -114,6 +114,7 @@ private:
     std::shared_ptr<RKISP2OutputFrameWorker> mRawOutWorker;
     ImguState mState;
     bool mConfigChanged;
+    bool mIsStillChangeStream;
 
     int mCameraId;
     RKISP2GraphConfigManager &mGCM;

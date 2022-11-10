@@ -250,7 +250,7 @@ RawCamFlashCtrUnit::RawCamFlashCtrUnit(const char* name,
                                        int CameraId) :
         mFlSubdev(new V4L2Subdevice(name)),
         mV4lFlashMode(V4L2_FLASH_LED_MODE_NONE),
-        isInFlash(false),
+        isNeedFlash(false),
         mAeTrigFrms(0),
         mMeanLuma(1.0f),
         mAeFlashMode(ANDROID_FLASH_MODE_OFF),
@@ -354,7 +354,7 @@ int RawCamFlashCtrUnit::setFlashSettings(const CameraMetadata *settings)
                 setToDrvFlMode = CAM_AE_FLASH_MODE_TORCH;
             else
                 setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
-            isInFlash = true;
+            isNeedFlash = setToDrvFlMode;
         } else if (mStillCapSyncState == STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE) {
             /* not go into this*/
             setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
@@ -364,16 +364,16 @@ int RawCamFlashCtrUnit::setFlashSettings(const CameraMetadata *settings)
             else if (aeFlashMode == CAM_AE_FLASH_MODE_ON)
                 setToDrvFlMode = CAM_AE_FLASH_MODE_ON;
             strobe = 1;
-            isInFlash = true;
+            isNeedFlash = setToDrvFlMode;
         } else if (mStillCapSyncState == STILL_CAP_SYNC_STATE_JPEG_FRAME_DONE) {
             setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
-            isInFlash = false;
+            isNeedFlash = setToDrvFlMode;
         }
     } else {
         setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
     }
-    LOGD_FLASH("%s:%d mStillCapSyncState %d, setToDrvFlMode %d, isInFlash(%d)",
-         __FUNCTION__, __LINE__, mStillCapSyncState, setToDrvFlMode, isInFlash);
+    LOGD_FLASH("%s:%d mStillCapSyncState %d, setToDrvFlMode %d, isNeedFlash(%d)",
+         __FUNCTION__, __LINE__, mStillCapSyncState, setToDrvFlMode, isNeedFlash);
 
     mLastStillCapSyncState = mStillCapSyncState;
     return setV4lFlashMode(setToDrvFlMode, 100, 500, strobe);
@@ -406,6 +406,20 @@ int RawCamFlashCtrUnit::updateFlashResult(CameraMetadata *result)
     result->update(ANDROID_FLASH_STATE, &flashState, 1);
 
     return 0;
+}
+
+int RawCamFlashCtrUnit::setStillChangeFlash(void)
+{
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
+    int ret = 0;
+
+    if (isNeedFlash) {
+        LOGD_FLASH("%s:%d set flash for still_change_resolution capture!", __FUNCTION__, __LINE__);
+        ret = setV4lFlashMode(CAM_AE_FLASH_MODE_ON, 100, 500, 1);
+        if (ret < 0)
+            LOGE_FLASH("%s:%d set flash settings failed", __FUNCTION__, __LINE__);
+    }
+    return ret ;
 }
 
 int RawCamFlashCtrUnit::setV4lFlashMode(int mode, int power, int fl_timeout, int strobe)
@@ -870,7 +884,7 @@ RKISP2ControlUnit::~RKISP2ControlUnit()
 }
 
 status_t
-RKISP2ControlUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, bool configChanged)
+RKISP2ControlUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, bool configChanged, bool isStillStream)
 {
     PERFORMANCE_ATRACE_NAME("RKISP2ControlUnit::configStreams");
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
@@ -883,7 +897,7 @@ RKISP2ControlUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, 
         mStilCapPreCapreqId = -1;
         mWaitingForCapture.clear();
         mSettingsHistory.clear();
-
+        mIsStillChangeStream = isStillStream;
         struct rkisp_cl_prepare_params_s prepareParams;
 
         memset(&prepareParams, 0, sizeof(struct rkisp_cl_prepare_params_s));
@@ -955,6 +969,12 @@ RKISP2ControlUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, 
             if (CC_UNLIKELY(status != OK)) {
                 LOGE("Failed to start 3a control loop!");
                 return status;
+            }
+            /* used for switch resolution take picture */
+            if (mStillCapSyncState && isStillStream && mRawCamFlashCtrUnit.get()) {
+                int ret = mRawCamFlashCtrUnit->setStillChangeFlash();
+                if (ret < 0)
+                    LOGE_FLASH("%s:%d set Still change Flash failed.", __FUNCTION__, __LINE__);
             }
         }
     }
@@ -1218,7 +1238,7 @@ RKISP2ControlUnit::processRequestForCapture(std::shared_ptr<RKISP2RequestCtrlSta
             if (entry.count == 1) {
                 if (entry.data.u8[0] == ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_START) {
                     mStillCapSyncState = STILL_CAP_SYNC_STATE_TO_ENGINE_PRECAP;
-                    LOGD_CAP("@%s reqId(%d) AE_PRECAPTURE_TRIGGER state(%d), mStillCapSyncState(%d)", 
+                    LOGD_CAP("@%s reqId(%d) AE_PRECAPTURE_TRIGGER state(%d), mStillCapSyncState(%d)",
                         __FUNCTION__, reqId, entry.data.u8[0], mStillCapSyncState);
                     mStilCapPreCapreqId = reqId;
                     if (mRawCamFlashCtrUnit.get())
@@ -1289,8 +1309,10 @@ RKISP2ControlUnit::processRequestForCapture(std::shared_ptr<RKISP2RequestCtrlSta
             }
 
             /* if flash current is sof, now start flash */
-            if(jpegBufCount != 0 && (mStillCapSyncState == STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE)) {
-                while (!mSofSyncStae &&
+            if(jpegBufCount != 0 &&
+                (mStillCapSyncState == STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE)) {
+                while (!mIsStillChangeStream &&
+                    !mSofSyncStae &&
                        max_counts > 0) {
                     LOGD_CAP("waiting for SOF received!");
                     usleep(10*1000);
@@ -1300,7 +1322,7 @@ RKISP2ControlUnit::processRequestForCapture(std::shared_ptr<RKISP2RequestCtrlSta
                LOGD_CAP("%s:%d set mStillCapSyncState to (%d).", __FUNCTION__, __LINE__, mStillCapSyncState);
             }
 
-            if (mRawCamFlashCtrUnit.get()) {
+            if (!mIsStillChangeStream && mRawCamFlashCtrUnit.get()) {
                 mRawCamFlashCtrUnit->updateStillCapSyncState(mStillCapSyncState);
                 int ret = mRawCamFlashCtrUnit->setFlashSettings(settings);
                 if (ret < 0)
@@ -1653,6 +1675,12 @@ RKISP2ControlUnit::handleMessageFlush(Message &msg)
             }
             mStillCapSyncState = STILL_CAP_SYNC_STATE_TO_ENGINE_PRECAP;
         }
+        /* used for switch resolution take picture */
+        if (mIsStillChangeStream && mRawCamFlashCtrUnit.get()) {
+            int ret = mRawCamFlashCtrUnit->setV4lFlashMode(CAM_AE_FLASH_MODE_OFF, 0, 0, 0);
+            if (ret < 0)
+                LOGE("%s:%d set flash settings failed", __FUNCTION__, __LINE__);
+        }
     }
 
     mImguUnit->flush();
@@ -1776,7 +1804,6 @@ RKISP2ControlUnit::metadataReceived(int id, const camera_metadata_t *metas, int 
     status_t status = NO_ERROR;
     camera_metadata_entry entry;
     static std::map<int,uint8_t> sLastAeStateMap;
-    static bool flash_on = true;
 
     /* id = -2, just for sync sof for flash control */
     if (-2 == id) {
@@ -1786,6 +1813,16 @@ RKISP2ControlUnit::metadataReceived(int id, const camera_metadata_t *metas, int 
             mSofSyncId = sof_frameId;
             LOGD_FLASH("%s:%d get flash_sof_sync, sof_frameId(%d) !.", __FUNCTION__, __LINE__, mSofSyncId);
         }
+
+#if 0
+        /* used for switch resolution take picture, reduce flash time */
+        if (mIsStillChangeStream && mRawCamFlashCtrUnit.get() && sof_frameId == 1) {
+            LOGD_FLASH("@%s: sof_frameId(%d), capture done, set flash off!.", __FUNCTION__, sof_frameId);
+            int ret = mRawCamFlashCtrUnit->setV4lFlashMode(CAM_AE_FLASH_MODE_OFF, 0, 0, 0);
+            if (ret < 0)
+                LOGE_FLASH("%s:%d set flash settings failed", __FUNCTION__, __LINE__);
+        }
+#endif
         return status;
     }
 
@@ -1808,13 +1845,16 @@ RKISP2ControlUnit::metadataReceived(int id, const camera_metadata_t *metas, int 
 
     entry = result.find(RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD);
     if (entry.count == 1) {
-        LOGD_FLASH("metadataReceived RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD:%d", entry.data.u8[0]);
+        LOGD_FLASH("metadataReceived RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD:%d, mStillCapSyncState(%d), mFlushForUseCase(%d)",
+            entry.data.u8[0], mStillCapSyncState, mFlushForUseCase);
         if (entry.data.u8[0] == RKCAMERA3_PRIVATEDATA_STILLCAP_SYNC_CMD_SYNCDONE &&
             (mStillCapSyncState == STILL_CAP_SYNC_STATE_WAITING_ENGINE_DONE ||
              mFlushForUseCase == FLUSH_FOR_STILLCAP)) {
-            mStillCapSyncState = STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE;
-            LOGD("%s:%d, reqid(%d) set mStillCapSyncState to %d",
-                 __FUNCTION__, __LINE__, id, mStillCapSyncState);
+            if(id >= 0) {
+                mStillCapSyncState = STILL_CAP_SYNC_STATE_FROM_ENGINE_DONE;
+                LOGD_CAP("%s:%d, reqid(%d) set mStillCapSyncState to %d",
+                     __FUNCTION__, __LINE__, id, mStillCapSyncState);
+            }
         }
     }
 
