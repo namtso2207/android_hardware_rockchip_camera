@@ -730,6 +730,7 @@ ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
         LOGE("Request is nullptr");
         return BAD_VALUE;
     }
+    unsigned int numOutputBufs = request->getNumberOutputBufs();
     std::shared_ptr<DeviceMessage> tmp = std::make_shared<DeviceMessage>(msg);
     mMessagesPending.push_back(tmp);
 
@@ -745,7 +746,7 @@ ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
      * handle them in the right order.
      */
     if (mCurPipeConfig->nodes.size() > 0)
-        status |= mPollerThread->pollRequest(request->getId(), 3000,
+        status |= mPollerThread->pollRequest(request->getId(), numOutputBufs, 3000,
                                              &(mCurPipeConfig->nodes));
     return status;
 }

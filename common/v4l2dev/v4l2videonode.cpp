@@ -1484,16 +1484,19 @@ int V4L2VideoNode::qbuf(V4L2BufferInfo *buf)
 
 int V4L2VideoNode::dqbuf(V4L2BufferInfo *buf)
 {
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     V4L2Buffer &v4l2_buf = buf->vbuffer;
     int ret = 0;
+    struct v4l2_buffer *vbuf;
+    int64_t ts;
 
     PERFORMANCE_ATRACE_NAME_SNPRINTF("VIDIOC_DQBUF - %s", mName.c_str());
 
     v4l2_buf.setMemory(mMemoryType);
     v4l2_buf.setType(mBufType);
 
-    ret = pioctl(mFd, VIDIOC_DQBUF, v4l2_buf.get(), mName.c_str());
-
+    vbuf = v4l2_buf.get();
+    ret = pioctl(mFd, VIDIOC_DQBUF, vbuf, mName.c_str());
     if (ret < 0) {
         if (errno != EAGAIN)
             LOGE("VIDIOC_DQBUF failed: %s", strerror(errno));
@@ -1502,6 +1505,11 @@ int V4L2VideoNode::dqbuf(V4L2BufferInfo *buf)
     mBuffersInDevice--;
     LOGI("%s: VIDIOC_DQBUF, Fd(%d), index=%u, mBuffersInDevice(%d)", mName.c_str(),
             mFd, v4l2_buf.index(), mBuffersInDevice.load());
+    ts = (int64_t)vbuf->timestamp.tv_sec * 1000000000; // seconds to nanoseconds
+    ts += (int64_t)vbuf->timestamp.tv_usec * 1000; // microseconds to nanoseconds
+
+    LOGD_CAP("@%s:%d, tv_ns(%llu)!", __FUNCTION__, __LINE__, ts);
+
     return ret;
 }
 

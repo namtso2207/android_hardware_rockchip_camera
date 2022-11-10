@@ -140,7 +140,7 @@ status_t SharedItemPool<ItemType>::acquireItem(std::shared_ptr<ItemType> &item)
                 mName, status);
         return UNKNOWN_ERROR;
     }
-    LOGP("shared pool %s acquire items %p", mName, sh.get());
+    LOGD_POOL("shared pool %s acquire items %p", mName, sh.get());
     return OK;
 }
 
