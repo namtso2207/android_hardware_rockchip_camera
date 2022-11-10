@@ -259,6 +259,7 @@ void rk_camera_debug_open(void) {
 
   pthread_mutex_init(&dbg_log_mutex, 0);
   rk_camera_set_dbg_log_properties();
+  hal_get_log_level();
 
   /* configure asserts */
   property_get("persist.vendor.camera.debug.assert", property_value, "0");
@@ -307,4 +308,60 @@ void rk_camera_debug_close(void) {
 
   pthread_mutex_destroy(&dbg_log_mutex);
 }
+
+hal_cam_log_module_info_t g_hal_log_infos[HAL_LOG_MODULE_MAX] = {
+    {"FLASH", HAL_LOG_LEVEL_ERR, 0xff},       // HAL_LOG_MODULE_FLASH
+    {"CAPTURE", HAL_LOG_LEVEL_ERR, 0xff},       // HAL_LOG_MODULE_CAPTURE
+};
+
+int hal_get_log_level() {
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+
+    property_get("persist.vendor.camera.hal3.debug", property_value, "0");
+    g_cam_hal3_log_level = strtoull(property_value, nullptr, 16);
+
+    ALOGD("rkcamerahal3 log level %llx\n", g_cam_hal3_log_level);
+    unsigned long long module_mask = g_cam_hal3_log_level >> 12;
+
+    for (int i = 0; i < HAL_LOG_MODULE_MAX; i++) {
+        if (module_mask & (1ULL << i)) {
+            g_hal_log_infos[i].log_level = g_cam_hal3_log_level & 0xf;
+            g_hal_log_infos[i].sub_modules = (g_cam_hal3_log_level >> 4) & 0xff;
+        } else if ( g_cam_hal3_log_level == 0) {
+            g_hal_log_infos[i].log_level = 0;
+        }
+    }
+
+    return 0;
+}
+
+void hal_print_log (int module, int sub_modules, const char *tag, int level, const char* format, ...) {
+    char buffer[HAL_MAX_STR_SIZE] = {0};
+    va_list va_list;
+    if (((g_cam_hal3_log_level & 0xf) == 0) && (level < HAL_LOG_LEVEL_ERR) ) return;
+    va_start (va_list, format);
+    vsnprintf (buffer, HAL_MAX_STR_SIZE, format, va_list);
+    va_end (va_list);
+
+    switch(level) {
+    case HAL_LOG_LEVEL_ERR:
+        ALOGE("<%s> %s:%s", g_hal_log_infos[module].module_name, tag, buffer);
+        break;
+    case HAL_LOG_LEVEL_WARNING:
+        ALOGW("<%s> %s:%s", g_hal_log_infos[module].module_name, tag, buffer);
+        break;
+    case HAL_LOG_LEVEL_INFO:
+        ALOGI("<%s> %s:%s", g_hal_log_infos[module].module_name, tag, buffer);
+        break;
+    case HAL_LOG_LEVEL_VERBOSE:
+        ALOGV("<%s> %s:%s", g_hal_log_infos[module].module_name, tag, buffer);
+        break;
+    case HAL_LOG_LEVEL_DEBUG:
+    default:
+        ALOGD("<%s> %s:%s", g_hal_log_infos[module].module_name, tag, buffer);
+        break;
+    }
+}
+
+
 #endif
