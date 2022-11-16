@@ -95,6 +95,21 @@ public:
     void updateStillCapExpTime(int64_t ExposureTimens);
     int setV4lFlashMode(int mode, int power, int timeout, int strobe);
     int setStillChangeFlash(void);
+    int get_flash_info(void);
+
+    enum RK_HAL_V4L_FLASH_QUERY_TYPE {
+       RK_HAL_V4L_FLASH_QUERY_TYPE_E_MIN,
+       RK_HAL_V4L_FLASH_QUERY_TYPE_E_MAX,
+       RK_HAL_V4L_FLASH_QUERY_TYPE_E_DEFAULT,
+       RK_HAL_V4L_FLASH_QUERY_TYPE_E_STEP,
+       RK_HAL_V4L_FLASH_QUERY_TYPE_E_LAST,
+    };
+
+    // [min, max, default, step]
+    int torch_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_LAST];
+    int flash_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_LAST];
+    bool fl_strth_adj_enable;
+    bool tc_strth_adj_enable;
 
 private:  /* Methods */
     // prevent copy constructor and assignment operator
@@ -114,6 +129,7 @@ private:  /* Methods */
     int64_t mExposureTimens;
     bool isNeedFlash;
     int mStilCapPreCapreqId;
+    float mfl_intensity;
 };
 
 /**

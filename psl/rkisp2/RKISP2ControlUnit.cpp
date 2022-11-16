@@ -230,11 +230,11 @@ int SocCamFlashCtrUnit::setV4lFlashMode(int mode, int power, int timeout, int st
         set_fl_contol_to_dev(V4L2_CID_FLASH_LED_MODE, V4L2_FLASH_LED_MODE_FLASH);
         set_fl_contol_to_dev(V4L2_CID_FLASH_TIMEOUT, timeout * 1000);
         // TODO: should query intensity range before setting
-        /* set_fl_contol_to_dev(V4L2_CID_FLASH_INTENSITY, fl_intensity); */
+        /* set_fl_contol_to_dev(V4L2_CID_FLASH_INTENSITY, mfl_intensity); */
         set_fl_contol_to_dev(strobe ? V4L2_CID_FLASH_STROBE : V4L2_CID_FLASH_STROBE_STOP, 0);
     } else if (fl_v4l_mode == V4L2_FLASH_LED_MODE_TORCH) {
         // TODO: should query intensity range before setting
-        /* set_fl_contol_to_dev(V4L2_CID_FLASH_TORCH_INTENSITY, fl_intensity); */
+        /* set_fl_contol_to_dev(V4L2_CID_FLASH_TORCH_INTENSITY, mfl_intensity); */
         set_fl_contol_to_dev(V4L2_CID_FLASH_LED_MODE, V4L2_FLASH_LED_MODE_TORCH);
     } else {
         LOGE("setV4lFlashMode error fl mode %d", mode);
@@ -263,6 +263,59 @@ RawCamFlashCtrUnit::RawCamFlashCtrUnit(const char* name,
     mStilCapPreCapreqId = -1;
     if (mFlSubdev.get())
         mFlSubdev->open();
+    get_flash_info();
+    mfl_intensity = 0.8;
+}
+
+int RawCamFlashCtrUnit::get_flash_info(void)
+{
+    struct v4l2_queryctrl ctrl;
+    int flash_power, torch_power;
+
+    LOGD_FLASH("%s:%d", __FUNCTION__, __LINE__);
+    memset(&ctrl, 0, sizeof(ctrl));
+    ctrl.id = V4L2_CID_FLASH_INTENSITY;
+    if (pioctl(mFlSubdev->getFd(), VIDIOC_QUERYCTRL, &ctrl, 0) < 0) {
+        LOGD_FLASH("query V4L2_CID_FLASH_INTENSITY failed. cmd = 0x%x",
+                        V4L2_CID_FLASH_INTENSITY);
+        return -1;
+    }
+
+    flash_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_MIN] =
+        ctrl.minimum;
+    flash_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_MAX] =
+        ctrl.maximum;
+    flash_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_DEFAULT] =
+        ctrl.default_value;
+    flash_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_STEP] =
+        ctrl.step;
+    fl_strth_adj_enable = !(ctrl.flags & V4L2_CTRL_FLAG_READ_ONLY);
+
+    LOGD_FLASH("flash power range:[%d,%d], adjust enable %d",
+                    ctrl.minimum, ctrl.maximum, fl_strth_adj_enable);
+
+    memset(&ctrl, 0, sizeof(ctrl));
+    ctrl.id = V4L2_CID_FLASH_TORCH_INTENSITY;
+    if (pioctl(mFlSubdev->getFd(), VIDIOC_QUERYCTRL, &ctrl, 0) < 0) {
+        LOGD_FLASH("query V4L2_CID_FLASH_INTENSITY failed. cmd = 0x%x",
+                        V4L2_CID_FLASH_INTENSITY);
+        return -1;
+    }
+
+    torch_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_MIN] =
+        ctrl.minimum;
+    torch_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_MAX] =
+        ctrl.maximum;
+    torch_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_DEFAULT] =
+        ctrl.default_value;
+    torch_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_STEP] =
+        ctrl.step;
+    tc_strth_adj_enable = !(ctrl.flags & V4L2_CTRL_FLAG_READ_ONLY);
+
+    LOGD_FLASH("torch power range:[%d,%d], adjust enable %d",
+                    ctrl.minimum, ctrl.maximum, tc_strth_adj_enable);
+
+    return 0;
 }
 
 RawCamFlashCtrUnit::~RawCamFlashCtrUnit()
@@ -280,7 +333,7 @@ void RawCamFlashCtrUnit::updateStillPreCapreqId(int reqId) {
 
 void RawCamFlashCtrUnit::setMeanLuma(float luma, int reqId)
 {
-        mMeanLuma = luma;
+    mMeanLuma = luma;
 }
 
 void RawCamFlashCtrUnit::updateStillCapSyncState(StillCapSyncState_e stillCapSyncState) {
@@ -459,11 +512,30 @@ int RawCamFlashCtrUnit::setV4lFlashMode(int mode, int power, int fl_timeout, int
         set_fl_contol_to_dev(V4L2_CID_FLASH_LED_MODE, V4L2_FLASH_LED_MODE_FLASH);
         set_fl_contol_to_dev(V4L2_CID_FLASH_TIMEOUT, fl_timeout * 1000);
         // TODO: should query intensity range before setting
-        /* set_fl_contol_to_dev(V4L2_CID_FLASH_INTENSITY, fl_intensity); */
+        if (fl_strth_adj_enable) {
+            int flash_power =
+                mfl_intensity * (flash_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_MAX]);
+            set_fl_contol_to_dev(V4L2_CID_FLASH_TORCH_INTENSITY, flash_power);
+            LOGE_FLASH("set flash: flash:%f max:%d set:%d\n",
+                            mfl_intensity,
+                            flash_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_MAX],
+                            flash_power);
+        }
+
         set_fl_contol_to_dev(strobe ? V4L2_CID_FLASH_STROBE : V4L2_CID_FLASH_STROBE_STOP, 0);
     } else if (fl_v4l_mode == V4L2_FLASH_LED_MODE_TORCH) {
         // TODO: should query intensity range before setting
-        /* set_fl_contol_to_dev(V4L2_CID_FLASH_TORCH_INTENSITY, fl_intensity); */
+        /* set_fl_contol_to_dev(V4L2_CID_FLASH_TORCH_INTENSITY, mfl_intensity); */
+        if (tc_strth_adj_enable) {
+            int torch_power =
+                mfl_intensity * (torch_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_MAX]);
+            set_fl_contol_to_dev(V4L2_CID_FLASH_TORCH_INTENSITY, torch_power);;
+            LOGE_FLASH("set flash: torch:%f max:%d set:%d\n",
+                            mfl_intensity,
+                            torch_power_info[RK_HAL_V4L_FLASH_QUERY_TYPE_E_MAX],
+                            torch_power);
+        }
+
         set_fl_contol_to_dev(V4L2_CID_FLASH_LED_MODE, V4L2_FLASH_LED_MODE_TORCH);
     } else {
         LOGE_FLASH("setV4lFlashMode error fl mode %d", mode);
