@@ -158,7 +158,7 @@ void rk_camera_debug_close(void);
  * meaning:  [sub modules]                             [level]
  *
  * bit:      15          14       13          12       11-8
- * meaning:  [U]      [POOL]     [CAPTURE]       [FLASH]    [sub modules]
+ * meaning:  [MSG]      [POOL]     [CAPTURE]       [FLASH]    [sub modules]
  *
  * bit:      23          22       21          20       19       18        17          16
  * meaning:  [U]    [U]   [U]  [U]   [U]   [U]     [U]      [U]
@@ -220,6 +220,7 @@ typedef enum {
     HAL_LOG_MODULE_FLASH,
     HAL_LOG_MODULE_CAP,
     HAL_LOG_MODULE_POOL,
+    HAL_LOG_MODULE_MSG,
     HAL_LOG_MODULE_MAX,
 } hal_log_modules_t;
 
@@ -301,7 +302,7 @@ static unsigned long long g_cam_hal3_log_level = 0xff0;
 #define LOGV_CAP(...) LOGV_CAP_SUBM(0xff, ##__VA_ARGS__)
 #define LOG1_CAP(...) LOG1_CAP_SUBM(0xff, ##__VA_ARGS__)
 
-#define LOGE_POLL_SUBM(sub_modules, ...) HAL_MODULE_LOG_ERROR(HAL_LOG_MODULE_POOL, sub_modules, ##__VA_ARGS__)
+#define LOGE_POOL_SUBM(sub_modules, ...) HAL_MODULE_LOG_ERROR(HAL_LOG_MODULE_POOL, sub_modules, ##__VA_ARGS__)
 #define LOGW_POOL_SUBM(sub_modules, ...) HAL_MODULE_LOG_WARNING(HAL_LOG_MODULE_POOL, sub_modules, ##__VA_ARGS__)
 #define LOGI_POOL_SUBM(sub_modules, ...) HAL_MODULE_LOG_INFO(HAL_LOG_MODULE_POOL, sub_modules, ##__VA_ARGS__)
 #define LOGD_POOL_SUBM(sub_modules, ...) HAL_MODULE_LOG_DEBUG(HAL_LOG_MODULE_POOL, sub_modules, ##__VA_ARGS__)
@@ -314,6 +315,20 @@ static unsigned long long g_cam_hal3_log_level = 0xff0;
 #define LOGD_POOL(...) LOGD_POOL_SUBM(0xff, ##__VA_ARGS__)
 #define LOGV_POOL(...) LOGV_POOL_SUBM(0xff, ##__VA_ARGS__)
 #define LOG1_POOL(...) LOG1_POOL_SUBM(0xff, ##__VA_ARGS__)
+
+#define LOGE_MSG_SUBM(sub_modules, ...) HAL_MODULE_LOG_ERROR(HAL_LOG_MODULE_MSG, sub_modules, ##__VA_ARGS__)
+#define LOGW_MSG_SUBM(sub_modules, ...) HAL_MODULE_LOG_WARNING(HAL_LOG_MODULE_MSG, sub_modules, ##__VA_ARGS__)
+#define LOGI_MSG_SUBM(sub_modules, ...) HAL_MODULE_LOG_INFO(HAL_LOG_MODULE_MSG, sub_modules, ##__VA_ARGS__)
+#define LOGD_MSG_SUBM(sub_modules, ...) HAL_MODULE_LOG_DEBUG(HAL_LOG_MODULE_MSG, sub_modules, ##__VA_ARGS__)
+#define LOGV_MSG_SUBM(sub_modules, ...) HAL_MODULE_LOG_VERBOSE(HAL_LOG_MODULE_MSG, sub_modules, ##__VA_ARGS__)
+#define LOG1_MSG_SUBM(sub_modules, ...) HAL_MODULE_LOG_LOW1(HAL_LOG_MODULE_MSG, sub_modules, ##__VA_ARGS__)
+
+#define LOGE_MSG(...) LOGE_MSG_SUBM(0xff, ##__VA_ARGS__)
+#define LOGW_MSG(...) LOGW_MSG_SUBM(0xff, ##__VA_ARGS__)
+#define LOGI_MSG(...) LOGI_MSG_SUBM(0xff, ##__VA_ARGS__)
+#define LOGD_MSG(...) LOGD_MSG_SUBM(0xff, ##__VA_ARGS__)
+#define LOGV_MSG(...) LOGV_MSG_SUBM(0xff, ##__VA_ARGS__)
+#define LOG1_MSG(...) LOG1_MSG_SUBM(0xff, ##__VA_ARGS__)
 
 #else
 

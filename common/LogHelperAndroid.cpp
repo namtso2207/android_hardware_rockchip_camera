@@ -312,6 +312,8 @@ void rk_camera_debug_close(void) {
 hal_cam_log_module_info_t g_hal_log_infos[HAL_LOG_MODULE_MAX] = {
     {"FLASH", HAL_LOG_LEVEL_ERR, 0xff},       // HAL_LOG_MODULE_FLASH
     {"CAPTURE", HAL_LOG_LEVEL_ERR, 0xff},       // HAL_LOG_MODULE_CAPTURE
+    {"POOL", HAL_LOG_LEVEL_ERR, 0xff},       // HAL_LOG_MODULE_POOL
+    {"MSGQUEUE", HAL_LOG_LEVEL_ERR, 0xff},       // HAL_LOG_MODULE_MESSAGE
 };
 
 int hal_get_log_level() {
