@@ -12,6 +12,13 @@
 #endif
 
 #include "common/camera_buffer_manager_gralloc4_impl.h"
+#include <aidl/android/hardware/graphics/allocator/IAllocator.h>
+#include <aidl/android/hardware/graphics/allocator/AllocationError.h>
+#include <aidl/android/hardware/graphics/allocator/AllocationResult.h>
+#include <aidl/android/hardware/graphics/common/BufferUsage.h>
+#include <android/binder_manager.h>
+#include <aidlcommonsupport/NativeHandle.h>
+
 #include <hwbinder/IPCThreadState.h>
 #include <sync/sync.h>
 #include <drm_fourcc.h>
@@ -61,8 +68,10 @@ using aidl::android::hardware::graphics::common::Rect;
 using aidl::android::hardware::graphics::common::PlaneLayoutComponentType;
 using android::hardware::graphics::common::V1_2::PixelFormat;
 
-
-
+using aidl::android::hardware::graphics::allocator::AllocationError;
+using aidl::android::hardware::graphics::allocator::AllocationResult;
+using AidlIAllocator = ::aidl::android::hardware::graphics::allocator::IAllocator;
+using AidlBufferUsage = ::aidl::android::hardware::graphics::common::BufferUsage;
 
 #define IMPORTBUFFER_CB 1
 
@@ -72,7 +81,7 @@ namespace arc {
 namespace {
 
 static constexpr Error kTransactionError = Error::NO_RESOURCES;
-
+static const auto kAidlAllocatorServiceName = AidlIAllocator::descriptor + std::string("/default");
 #define GRALLOC_ARM_METADATA_TYPE_NAME "arm.graphics.ArmMetadataType"
 const static IMapper::MetadataType ArmMetadataType_PLANE_FDS
 {
@@ -80,6 +89,16 @@ const static IMapper::MetadataType ArmMetadataType_PLANE_FDS
 	// static_cast<int64_t>(aidl::arm::graphics::ArmMetadataType::PLANE_FDS)
     1   // 就是上面的 'PLANE_FDS'
 };
+
+static bool hasIAllocatorAidl() {
+    static bool sHasIAllocatorAidl = []() -> bool {
+        if (__builtin_available(android 31, *)) {
+            return AServiceManager_isDeclared(kAidlAllocatorServiceName.c_str());
+        }
+        return false;
+    }();
+    return sHasIAllocatorAidl;
+}
 
 static IMapper &get_mapperservice()
 {
@@ -90,6 +109,14 @@ static IMapper &get_mapperservice()
 static IAllocator &get_allocservice()
 {
     static android::sp<IAllocator> cached_service = IAllocator::getService();
+    return *cached_service;
+}
+
+static AidlIAllocator &get_aidl_allocservice()
+{
+    static std::shared_ptr<AidlIAllocator> cached_service = AidlIAllocator::fromBinder(ndk::SpAIBinder(
+                    AServiceManager_waitForService(kAidlAllocatorServiceName.c_str())));
+    ALOGE_IF(!cached_service, "AIDL IAllocator declared but failed to get service");
     return *cached_service;
 }
 
@@ -117,6 +144,17 @@ uint64_t getValidUsageBits() {
         for (const auto bit :
              android::hardware::hidl_enum_range<android::hardware::graphics::common::V1_2::BufferUsage>()) {
             bits = bits | bit;
+        }
+        return bits;
+    }();
+    return validUsageBits;
+}
+
+uint64_t getValidUsageBits41() {
+    static const uint64_t validUsageBits = []() -> uint64_t {
+        uint64_t bits = 0;
+        for (const auto bit : ndk::enum_range<AidlBufferUsage>{}) {
+            bits |= static_cast<int64_t>(bit);
         }
         return bits;
     }();
@@ -389,9 +427,21 @@ status_t CameraBufferManagerImpl::validateBufferDescriptorInfo(
         IMapper::BufferDescriptorInfo* descriptorInfo) const {
     uint64_t validUsageBits = getValidUsageBits();
 
+    if (hasIAllocatorAidl()) {
+        validUsageBits |= getValidUsageBits41();
+    }
     if (descriptorInfo->usage & ~validUsageBits) {
         ALOGE("buffer descriptor contains invalid usage bits 0x%" PRIx64,
               descriptorInfo->usage & ~validUsageBits);
+        return android::BAD_VALUE;
+    }
+
+    // Combinations that are only allowed with gralloc 4.1.
+    // Previous grallocs must be protected from this.
+    if (!hasIAllocatorAidl() &&
+        descriptorInfo->format != android::hardware::graphics::common::V1_2::PixelFormat::BLOB &&
+            descriptorInfo->usage & BufferUsage::GPU_DATA_BUFFER) {
+        ALOGE("non-BLOB pixel format with GPU_DATA_BUFFER usage is not supported prior to gralloc 4.1");
         return android::BAD_VALUE;
     }
     return android::NO_ERROR;
@@ -999,6 +1049,58 @@ int CameraBufferManagerImpl::AllocateGrallocBuffer(size_t width,
     buffer_context->type = GRALLOC;
 
     int bufferCount = 1;
+    if (hasIAllocatorAidl()) {
+        AllocationResult result;
+        auto &mAidlAllocator = get_aidl_allocservice();
+        auto status = mAidlAllocator.allocate(descriptor, bufferCount, &result);
+        if (!status.isOk()) {
+            error = status.getExceptionCode();
+            if (error == EX_SERVICE_SPECIFIC) {
+                error = status.getServiceSpecificError();
+            }
+            if (error == android::OK) {
+                error = android::UNKNOWN_ERROR;
+            }
+        } else {
+            #if IMPORTBUFFER_CB == 1
+                for (uint32_t i = 0; i < bufferCount; i++) {
+                    auto handle = android::makeFromAidl(result.buffers[i]);
+                    error = importBuffer(handle, out_buffer);
+                    native_handle_delete(handle);
+                    if (error != android::NO_ERROR) {
+                        for (uint32_t j = 0; j < i; j++) {
+                            freeBuffer(*out_buffer);
+                            *out_buffer = nullptr;
+                        }
+                        break;
+                    }
+                }
+            #else
+                for (uint32_t i = 0; i < bufferCount; i++) {
+                    *out_buffer = dupFromAidl(result.buffers[i]);
+                    if (!out_buffer) {
+                        for (uint32_t j = 0; j < i; j++) {
+                            // auto buffer = const_cast<native_handle_t*>(outBufferHandles[j]);
+                            native_handle_close(out_buffer);
+                            native_handle_delete(out_buffer);
+                            *out_buffer = nullptr;
+                        }
+                    }
+                }
+            #endif
+            *out_stride = result.stride;
+        }
+        // Release all the resources held by AllocationResult (specifically any remaining FDs)
+        LOGD("AllocateGrallocBuffer with aidl %p", *out_buffer);
+        buffer_context->usage = 1;
+        buffer_context_[*out_buffer] = std::move(buffer_context);
+
+        result = {};
+        // make sure the kernel driver sees BC_FREE_BUFFER and closes the fds now
+        android::hardware::IPCThreadState::self()->flushCommands();
+        return error;
+    }
+    LOGD("Get back to gralloc 4 hidl.");
     auto &allocator = get_allocservice();
     auto ret = allocator.allocate(descriptor, bufferCount,
                                     [&](const auto& tmpError, const auto& tmpStride,
