@@ -1059,7 +1059,7 @@ RKISP2ControlUnit::requestExitAndWait()
 {
     Message msg;
     msg.id = MESSAGE_ID_EXIT;
-    status_t status = mMessageQueue.send(&msg, MESSAGE_ID_EXIT);
+    status_t status = mMessageQueue.flush_send(&msg, MESSAGE_ID_EXIT, 3000);
     status |= mMessageThread->requestExitAndWait();
     return status;
 }
@@ -1708,7 +1708,7 @@ RKISP2ControlUnit::flush(int configChanged)
     mMessageQueue.remove(MESSAGE_ID_NEW_REQUEST);
     mMessageQueue.remove(MESSAGE_ID_NEW_SHUTTER);
     mMessageQueue.remove(MESSAGE_ID_NEW_REQUEST_DONE);
-    return mMessageQueue.send(&msg, MESSAGE_ID_FLUSH);
+    return mMessageQueue.flush_send(&msg, MESSAGE_ID_FLUSH, 3000);
 }
 
 status_t
@@ -1721,9 +1721,9 @@ RKISP2ControlUnit::handleMessageFlush(Message &msg)
     }
     mFlushForUseCase = msg.configChanged;
     if(msg.configChanged && mCtrlLoop && mEnable3A) {
-        if (mStillCapSyncNeeded &&
+        if (0/*mStillCapSyncNeeded &&
             mStillCapSyncState != STILL_CAP_SYNC_STATE_TO_ENGINE_PRECAP &&
-            mFlushForUseCase == FLUSH_FOR_STILLCAP) {
+            mFlushForUseCase == FLUSH_FOR_STILLCAP*/) {
             rkisp_cl_frame_metadata_s frame_metas;
             // force precap
             uint8_t precap = ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_START;

@@ -63,6 +63,7 @@ status_t MessageQueue<MessageType, MessageId>::send(MessageType *msg,
     status_t status = NO_ERROR;
     bool notDefReplyId = (replyId != (MessageId)-1);
 
+    LOGI_MSG("@%s: enter, replyId(%d), notDefReplyId(%d)", __FUNCTION__, replyId, notDefReplyId);
     // someone is misusing the API. replies have not been enabled
     if (notDefReplyId && mNumReply == 0) {
         LOGE("Camera_MessageQueue error: %s replies not enabled\n", mName);
@@ -85,10 +86,65 @@ status_t MessageQueue<MessageType, MessageId>::send(MessageType *msg,
         mQueueCondition.notify_one();
     }
 
+    LOGI_MSG("@%s: enter, mReplyStatus[%d]: %d", __FUNCTION__, replyId, mReplyStatus[replyId]);
+
     if (notDefReplyId && replyId >= 0) {
         std::unique_lock<std::mutex> lk(mReplyMutex[replyId]);
         while (mReplyStatus[replyId] == WOULD_BLOCK) {
+            LOGD_MSG("@%s: waiting for: %d, reply!", __FUNCTION__, replyId);
             mReplyCondition[replyId].wait(lk);
+            LOGD_MSG("@%s: waiting: %d, replyed!", __FUNCTION__, replyId);
+            // wait() should never complete without a new status having
+            // been set, but for diagnostic purposes let's check it.
+            if (mReplyStatus[replyId] == WOULD_BLOCK) {
+                LOGE("Camera_MessageQueue - woke with WOULD_BLOCK\n");
+            }
+        }
+        status = mReplyStatus[replyId];
+    }
+
+    return status;
+}
+
+template <class MessageType, class MessageId>
+status_t MessageQueue<MessageType, MessageId>::flush_send(MessageType *msg,
+                                             MessageId replyId, unsigned int timeout_ms)
+{
+    status_t status = NO_ERROR;
+    bool notDefReplyId = (replyId != (MessageId)-1);
+
+    LOGI_MSG("@%s: enter, replyId(%d), notDefReplyId(%d)", __FUNCTION__, replyId, notDefReplyId);
+    // someone is misusing the API. replies have not been enabled
+    if (notDefReplyId && mNumReply == 0) {
+        LOGE("Camera_MessageQueue error: %s replies not enabled\n", mName);
+        return BAD_VALUE;
+    }
+
+    if (replyId < -1 || replyId >= mNumReply) {
+        LOGE("Camera_MessageQueue error: incorrect replyId: %d\n", replyId);
+        return BAD_VALUE;
+    }
+
+    {
+        std::lock_guard<std::mutex> l(mQueueMutex);
+        MessageType data = *msg;
+        mList.push_front(data);
+        if (notDefReplyId) {
+            mReplyStatus[replyId] = WOULD_BLOCK;
+        }
+        mQueueCondition.notify_one();
+    }
+
+    LOGI_MSG("@%s: enter, mReplyStatus[%d]: %d", __FUNCTION__, replyId, mReplyStatus[replyId]);
+
+    if (notDefReplyId && replyId >= 0) {
+        std::unique_lock<std::mutex> lk(mReplyMutex[replyId]);
+        if (mReplyStatus[replyId] == WOULD_BLOCK) {
+            LOGI_MSG("@%s: waiting for: %d, reply!", __FUNCTION__, replyId);
+            auto st = mReplyCondition[replyId].wait_for(lk, std::chrono::milliseconds(timeout_ms));
+            if (st == std::cv_status::timeout) {
+                LOGE_MSG("%s: wait for reply:%d message timeout!", __FUNCTION__, replyId);
+            }
             // wait() should never complete without a new status having
             // been set, but for diagnostic purposes let's check it.
             if (mReplyStatus[replyId] == WOULD_BLOCK) {
@@ -142,7 +198,10 @@ status_t MessageQueue<MessageType, MessageId>::receive(MessageType *msg,
 
     while (isEmptyLocked()) {
         if (timeout_ms) {
-            mQueueCondition.wait_for(l, std::chrono::milliseconds(timeout_ms));
+            auto st = mQueueCondition.wait_for(l, std::chrono::milliseconds(timeout_ms));
+            if (st == std::cv_status::timeout) {
+                LOGE_MSG("%s: wait for receive message timeout!", __FUNCTION__);
+            }
         } else {
             mQueueCondition.wait(l);
         }
@@ -165,8 +224,9 @@ void MessageQueue<MessageType, MessageId>::reply(MessageId replyId, status_t sta
         return;
     }
 
-    std::lock_guard<std::mutex> l(mReplyMutex[replyId]);
+    std::unique_lock<std::mutex> lk(mReplyMutex[replyId]);
     mReplyStatus[replyId] = status;
+    lk.unlock();
     mReplyCondition[replyId].notify_one();
 }
 

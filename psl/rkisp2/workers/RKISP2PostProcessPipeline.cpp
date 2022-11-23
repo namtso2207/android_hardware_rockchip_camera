@@ -218,13 +218,13 @@ RKISP2PostProcessUnit::flush() {
 
     std::lock_guard<std::mutex> l(mApiLock);
 
-    mInBufferPool.clear();
+    //mInBufferPool.clear();
     for (auto iter : mOutBufferPool)
         notifyListeners(iter, std::shared_ptr<RKISP2ProcUnitSettings>(), -1);
-    mOutBufferPool.clear();
-    mCurPostProcBufIn.reset();
-    mCurProcSettings.reset();
-    mCurPostProcBufOut.reset();
+    //mOutBufferPool.clear();
+    //mCurPostProcBufIn.reset();
+    //mCurProcSettings.reset();
+    //mCurPostProcBufOut.reset();
 
     return OK;
 }
@@ -1071,6 +1071,10 @@ void
 RKISP2PostProcessPipeline::flush() {
     LOGD("@%s", __FUNCTION__);
 
+    Message msg;
+    msg.id = MESSAGE_ID_FLUSH;
+    status_t status = mMessageQueue.send(&msg);
+
     /* TODO  now only complete dummy flush, just wait all request done,
      * and flush here do nothing, in future vertion, add it*/
     /* flush from first level unit to last level */
@@ -1309,7 +1313,12 @@ status_t
 RKISP2PostProcessPipeline::handleFlush(Message &msg)
 {
     LOGD("@%s : enter", __FUNCTION__);
-    return NO_ERROR;
+    status_t status = OK;
+    for (int i = 0; i < kMaxLevel; i++)
+        for (auto iter : mPostProcUnitArray[i])
+           status |= iter->flush();
+
+    return status;
 }
 
 RKISP2PostProcessPipeline::

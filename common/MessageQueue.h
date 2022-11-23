@@ -29,6 +29,7 @@
 
 // By default MessageQueue::receive() waits infinitely for a new message
 #define MESSAGE_QUEUE_RECEIVE_TIMEOUT_MSEC_INFINITE 0
+#define MESSAGE_QUEUE_DEFAULT_TIMEOUT_MSEC 10000 //10s
 
 NAMESPACE_DECLARATION {
 
@@ -49,6 +50,8 @@ public:
     // the caller is signalled with a reply. Caller is unblocked when reply method is
     // called with the corresponding message id.
     status_t send(MessageType *msg, MessageId replyId = (MessageId) -1);
+    status_t flush_send(MessageType *msg, MessageId replyId = (MessageId) -1,
+                    unsigned int timeout_ms = MESSAGE_QUEUE_RECEIVE_TIMEOUT_MSEC_INFINITE);
 
     status_t remove(MessageId id, std::vector<MessageType> *vect = nullptr);
 
