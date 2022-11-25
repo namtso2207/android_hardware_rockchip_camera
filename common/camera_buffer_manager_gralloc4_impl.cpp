@@ -185,6 +185,7 @@ int CameraBufferManagerImpl::GetHalPixelFormat(buffer_handle_t buffer) {
         return err;
     }
 
+    LOGD("@%s: get buffer format(%d).", __FUNCTION__, format);
     return (int)format;
 }
 
@@ -363,7 +364,12 @@ size_t CameraBufferManager::GetPlaneSize(buffer_handle_t buffer, size_t plane) {
         LOGD(" w/h: %dx%d, stride:%d size:%d ", layouts[plane].widthInSamples, layouts[plane].heightInSamples,
                  layouts[plane].strideInBytes, layouts[plane].totalSizeInBytes);
 
-        return layouts[plane].totalSizeInBytes;
+        if (format_requested == HAL_PIXEL_FORMAT_BLOB) {
+            LOGD("@%s: format is BLOB, return correct stride with layouts[plane].widthInSamples!", __FUNCTION__)
+            return layouts[plane].widthInSamples;
+        } else {
+            return layouts[plane].totalSizeInBytes;
+        }
     }
     /* 否则, 即 'format_requested' "是" HAL_PIXEL_FORMAT_YCrCb_NV12_10, 则 ... */
     else

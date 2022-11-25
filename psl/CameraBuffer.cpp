@@ -262,6 +262,8 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     return NO_ERROR;
 }
 void CameraBuffer::reConfig(int w, int h){
+
+    LOGD("@%s, enter: wxh(%dx%d)", __FUNCTION__, w, h);
     mWidth = w;
     mHeight =h;
     mStride = w;
@@ -456,6 +458,7 @@ status_t CameraBuffer::lock(int flags)
 
     for (int i = 0; i < planeNum; i++) {
         mSize += mGbmBufferManager->GetPlaneSize(mHandle, i);
+        LOGI("@%s, i(%d) mFormat(%d) mSize(%d)", __FUNCTION__, i, mFormat, mSize);
     }
     LOGI("@%s, mDataPtr:%p, mSize:%d", __FUNCTION__, mDataPtr, mSize);
     if (!mSize) {
