@@ -28,6 +28,7 @@
 #include "RKISP2PSLConfParser.h"
 // #include "TuningServer.h"
 
+
 namespace android {
 namespace camera2 {
 
@@ -687,7 +688,7 @@ RKISP2CameraHw::initStaticMetadata(void)
     } else {
         mPipelineDepth = DEFAULT_PIPELINE_DEPTH;
     }
-
+    mPipelineDepth = HW_PIPELINE_MAX_DEPTH;
     /**
      * Check the consistency of the information we had in XML file.
      * partial result count is very tightly linked to the PSL
