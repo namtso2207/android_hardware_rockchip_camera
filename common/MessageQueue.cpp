@@ -86,7 +86,7 @@ status_t MessageQueue<MessageType, MessageId>::send(MessageType *msg,
         mQueueCondition.notify_one();
     }
 
-    LOGI_MSG("@%s: enter, mReplyStatus[%d]: %d", __FUNCTION__, replyId, mReplyStatus[replyId]);
+    LOGI_MSG("@%s: mReplyStatus[%d]: %d", __FUNCTION__, replyId, notDefReplyId ? mReplyStatus[replyId]:0);
 
     if (notDefReplyId && replyId >= 0) {
         std::unique_lock<std::mutex> lk(mReplyMutex[replyId]);
