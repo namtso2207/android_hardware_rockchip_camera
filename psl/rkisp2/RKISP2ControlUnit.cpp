@@ -38,6 +38,7 @@
 USING_METADATA_NAMESPACE;
 static const int SETTINGS_POOL_SIZE = MAX_REQUEST_IN_PROCESS_NUM * 2;
 #define FLASH_OFFSET 8.0 //ms
+#define FLASH_TRIGGER_TH 5.0f
 
 namespace android {
 namespace camera2 {
@@ -401,7 +402,7 @@ int RawCamFlashCtrUnit::setFlashSettings(const CameraMetadata *settings)
         setToDrvFlMode = CAM_AE_FLASH_MODE_TORCH;
     } else if (aeFlashMode == CAM_AE_FLASH_MODE_ON || (aeFlashMode == CAM_AE_FLASH_MODE_AUTO)) {
         if (mStillCapSyncState == STILL_CAP_SYNC_STATE_TO_ENGINE_PRECAP) {
-            if (aeFlashMode == CAM_AE_FLASH_MODE_AUTO && mMeanLuma < 18.0f)
+            if (aeFlashMode == CAM_AE_FLASH_MODE_AUTO && mMeanLuma < FLASH_TRIGGER_TH)
                 setToDrvFlMode = CAM_AE_FLASH_MODE_TORCH;
             else if (aeFlashMode == CAM_AE_FLASH_MODE_ON)
                 setToDrvFlMode = CAM_AE_FLASH_MODE_TORCH;
@@ -412,7 +413,7 @@ int RawCamFlashCtrUnit::setFlashSettings(const CameraMetadata *settings)
             /* not go into this*/
             setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
         } else if (mStillCapSyncState == STILL_CAP_SYNC_STATE_WATING_JPEG_FRAME) {
-            if (aeFlashMode == CAM_AE_FLASH_MODE_AUTO && mMeanLuma < 18.0f)
+            if (aeFlashMode == CAM_AE_FLASH_MODE_AUTO && mMeanLuma < FLASH_TRIGGER_TH)
                 setToDrvFlMode = CAM_AE_FLASH_MODE_ON;
             else if (aeFlashMode == CAM_AE_FLASH_MODE_ON)
                 setToDrvFlMode = CAM_AE_FLASH_MODE_ON;
@@ -425,6 +426,7 @@ int RawCamFlashCtrUnit::setFlashSettings(const CameraMetadata *settings)
     } else {
         setToDrvFlMode = CAM_AE_FLASH_MODE_OFF;
     }
+    LOGD("@%s: set mMeanLuma > %f to trigger flash!", __FUNCTION__, FLASH_TRIGGER_TH);
     LOGD_FLASH("%s:%d mStillCapSyncState %d, setToDrvFlMode %d, isNeedFlash(%d)",
          __FUNCTION__, __LINE__, mStillCapSyncState, setToDrvFlMode, isNeedFlash);
 
