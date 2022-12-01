@@ -1815,7 +1815,7 @@ const struct SensorDriverDescriptor* CameraHWInfo::getSensorDrvDes(int32_t camer
     }
 
     for (auto& des : mSensorInfo) {
-        if (des.mModuleIndexStr == cap->mModuleIndexStr)
+        if ((des.mModuleIndexStr == cap->mModuleIndexStr) && (des.mSensorName == cap->mSensorName))
             return &des;
     }
 
