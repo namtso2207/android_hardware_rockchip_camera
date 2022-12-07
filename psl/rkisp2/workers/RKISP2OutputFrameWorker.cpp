@@ -173,7 +173,7 @@ status_t RKISP2OutputFrameWorker::configure(bool configChanged)
         mOutputBuffers.resize(mPipelineDepth);
 
         ret = setWorkerDeviceBuffers(
-                                     mNeedPostProcess ? V4L2_MEMORY_MMAP : getDefaultMemoryType(mNodeName));
+                                     mNeedPostProcess ? V4L2_MEMORY_MMAP : getDefaultMemoryType(mNodeName), mPostPipeline->mIsNeedcached);
         CheckError((ret != OK), ret, "@%s set worker device buffers failed.",
                    __FUNCTION__);
 
@@ -309,9 +309,15 @@ status_t RKISP2OutputFrameWorker::run()
     status_t status = NO_ERROR;
     int index = 0;
     Camera3Request* request = mMsg->cbMetadataMsg.request;
+    uint32_t cacheflags = V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |
+                         V4L2_BUF_FLAG_NO_CACHE_CLEAN;
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
 
     V4L2BufferInfo outBuf;
+    if (mPostPipeline->mIsNeedcached)
+        outBuf.cache_flags = 0;
+    else
+        outBuf.cache_flags = cacheflags;
 
     if (!mDevError) {
         status = mNode->grabFrame(&outBuf);

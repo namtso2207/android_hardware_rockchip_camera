@@ -57,7 +57,7 @@ public:
 protected:
     status_t allocateWorkerBuffers();
     status_t setWorkerDeviceFormat(FrameInfo &frame);
-    status_t setWorkerDeviceBuffers(int memType);
+    status_t setWorkerDeviceBuffers(int memType, bool cached);
 
 protected:
     std::vector<V4L2Buffer> mBuffers;

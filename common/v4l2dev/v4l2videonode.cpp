@@ -1478,7 +1478,7 @@ int V4L2VideoNode::qbuf(V4L2BufferInfo *buf)
         return ret;
     }
     mBuffersInDevice++;
-    LOGI("%s: VIDIOC_QBUF, Fd(%d), index=%u, mBuffersInDevice(%d)", mName.c_str(), mFd, buf->vbuffer.index(), mBuffersInDevice.load());
+    LOGI("%s: VIDIOC_QBUF, Fd(%d), index=%u, mBuffersInDevice(%d), buf->cache_flags(0x%x)", mName.c_str(), mFd, buf->vbuffer.index(), mBuffersInDevice.load(), buf->cache_flags);
     return ret;
 }
 
@@ -1503,8 +1503,8 @@ int V4L2VideoNode::dqbuf(V4L2BufferInfo *buf)
         return ret;
     }
     mBuffersInDevice--;
-    LOGI("%s: VIDIOC_DQBUF, Fd(%d), index=%u, mBuffersInDevice(%d)", mName.c_str(),
-            mFd, v4l2_buf.index(), mBuffersInDevice.load());
+    LOGI("%s: VIDIOC_DQBUF, Fd(%d), index=%u, mBuffersInDevice(%d), , buf->cache_flag(0x%x)", mName.c_str(),
+            mFd, v4l2_buf.index(), mBuffersInDevice.load(), buf->cache_flags);
     ts = (int64_t)vbuf->timestamp.tv_sec * 1000000000; // seconds to nanoseconds
     ts += (int64_t)vbuf->timestamp.tv_usec * 1000; // microseconds to nanoseconds
 

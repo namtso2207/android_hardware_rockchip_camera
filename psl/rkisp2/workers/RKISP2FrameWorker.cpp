@@ -109,14 +109,14 @@ status_t RKISP2FrameWorker::setWorkerDeviceFormat(FrameInfo &frame)
     return OK;
 }
 
-status_t RKISP2FrameWorker::setWorkerDeviceBuffers(int memType)
+status_t RKISP2FrameWorker::setWorkerDeviceBuffers(int memType, bool cached)
 {
     LOGI("@%s enter, %s", __FUNCTION__, mName.c_str());
     for (unsigned int i = 0; i < mPipelineDepth; i++) {
         V4L2Buffer buffer;
         mBuffers.push_back(buffer);
     }
-    status_t ret = mNode->setBufferPool(mBuffers, true, memType);
+    status_t ret = mNode->setBufferPool(mBuffers, cached, memType);
     if (ret != OK) {
         LOGE("Unable to set buffer pool, ret = %d", ret);
         return ret;

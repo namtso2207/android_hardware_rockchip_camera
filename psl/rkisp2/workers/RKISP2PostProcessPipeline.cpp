@@ -815,9 +815,13 @@ RKISP2PostProcessPipeline::prepare_internal(const FrameInfo& in,
             stream_type_map[stream_type_map.begin()->first] = stream_process_type;
             stream_type_map.begin()->second = stream_process_type;
         }
+        if (stream_process_type & kPostProcessTypeCopy)
+            mIsNeedcached = true;
+        else
+            mIsNeedcached = false;
 
-        LOGI("%s: stream %p process type 0x%x", __FUNCTION__,
-            (stream_type_map.begin())->first, stream_process_type);
+        LOGI("%s: stream %p process type 0x%x, mIsNeedcached(%d)", __FUNCTION__,
+            (stream_type_map.begin())->first, stream_process_type, mIsNeedcached);
        }
     } else {
         LOGW("%s: no need buffer copy for stream!", __FUNCTION__);

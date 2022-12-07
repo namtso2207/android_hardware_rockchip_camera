@@ -460,7 +460,7 @@ class RKISP2PostProcessPipeline: public IMessageHandler {
 
     int getCameraId() { return mCameraId; };
     camera3_stream_t* getStreamByType(int stream_type);
-
+    bool mIsNeedcached;
 
  private:
     virtual void messageThreadLoop(void);
