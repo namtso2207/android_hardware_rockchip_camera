@@ -361,6 +361,7 @@ ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 31)))
     LOCAL_HEADER_LIBRARIES += \
        libhardware_rockchip_headers
 ifeq (1,$(strip $(shell expr $(PLATFORM_SDK_VERSION) \>= 33)))
+LOCAL_CFLAGS += -DANDROID_VERSION_ABOVE_13_X
 LOCAL_SHARED_LIBRARIES += \
     libbinder_ndk \
     android.hardware.graphics.allocator-V1-ndk
