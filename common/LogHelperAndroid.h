@@ -22,6 +22,7 @@
 #include <utils/Log.h>
 #include "EnumPrinthelper.h"
 #include <cutils/properties.h>
+#include <sys/prctl.h>
 
 #define ENV_CAMERA_HAL_DEBUG  "persist.vendor.camera.debug"
 #define ENV_CAMERA_HAL_PERF   "persist.vendor.camera.perf"
@@ -100,25 +101,43 @@ if (g_cam_log[module][level]) {                                  \
 #undef LOGI
 #define LOGI(fmt, args...) CLOGI(CAM_MODULE, fmt, ##args)
 
+#define NS_PER_MS (NS_PER_SEC /MS_PER_SEC)
+
+static inline long get_time_diff_ms(struct timespec *from,
+                                    struct timespec *to) {
+    return (to->tv_sec - from->tv_sec) * (long)MS_PER_SEC +
+           (to->tv_nsec - from->tv_nsec) / (long)NS_PER_MS;
+}
+
 class ScopedLog {
 public:
 inline ScopedLog(int level, const char* name) :
         mLevel(level),
         mName(name) {
+            prctl(PR_GET_NAME, threadName);
+            clock_gettime(CLOCK_MONOTONIC_COARSE, &last_tm);
             if (g_cam_log[CAM_MODULE][mLevel] == 1) {
-                ALOGD("ENTER-%s", mName);
+                ALOGD("Thread[%s] ENTER-%s", threadName, mName);
             }
 }
 
 inline ~ScopedLog() {
+    prctl(PR_GET_NAME, threadName);
+    clock_gettime(CLOCK_MONOTONIC_COARSE, &curr_tm);
+
     if (g_cam_log[CAM_MODULE][mLevel] == 1) {
-        ALOGD("EXIT-%s", mName);
+        ALOGD("Thread[%s] EXIT-%s use %ldms", threadName, mName, get_time_diff_ms(&last_tm,&curr_tm));
+    } else if (get_time_diff_ms(&last_tm,&curr_tm) > 60){
+        ALOGW("Thread[%s] EXIT-%s use %ldms", threadName, mName, get_time_diff_ms(&last_tm,&curr_tm));
     }
 }
 
 private:
     int mLevel;
     const char* mName;
+    char threadName[20];
+    struct timespec last_tm;
+    struct timespec curr_tm;
 };
 
 /* reads and updates camera logging properties */
