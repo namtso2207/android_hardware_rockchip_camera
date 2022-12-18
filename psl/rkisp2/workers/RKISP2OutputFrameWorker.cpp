@@ -204,8 +204,8 @@ status_t RKISP2OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     if (!mStream)
         return NO_ERROR;
 
-    if (mIsStarted == false)
-        return OK;
+//    if (mIsStarted == false) /* add queue buf before stream on, no need this */
+//        return OK;
 
     mMsg = msg;
 
