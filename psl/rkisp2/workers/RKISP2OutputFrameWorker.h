@@ -39,6 +39,7 @@ public:
     void clearListeners();
     virtual status_t configure(bool configChanged);
     status_t prepareRun(std::shared_ptr<DeviceMessage> msg);
+    status_t skipBadFrames(int skipFrames);
     status_t run();
     status_t postRun();
     virtual status_t flushWorker();

@@ -87,6 +87,7 @@ private:
     status_t kickstart();
     status_t stopAllWorkers();
     void clearWorkers();
+    status_t skipBadFrames();
 
     status_t allocatePublicStatBuffers(int numBufs);
     void freePublicStatBuffers();
@@ -154,6 +155,7 @@ private:
     static const int RKISP1_MAX_STATISTICS_HEIGHT = 60;
 
     bool mTakingPicture;
+    bool mIsFrameSkiped;
 
     RKISP2CtrlLoop *mCtrlLoop;
 };

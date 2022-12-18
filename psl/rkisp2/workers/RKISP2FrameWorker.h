@@ -53,6 +53,7 @@ public:
     virtual bool needPolling() { return mPollMe && mNode->getBufsInDeviceCount(); }
     std::shared_ptr<V4L2VideoNode> getNode() const { return mNode; }
     virtual const char *name() { return mNode->name(); }
+    bool mIsStarted;
 
 protected:
     status_t allocateWorkerBuffers();
@@ -67,7 +68,6 @@ protected:
 
     V4L2Format mFormat;
     std::shared_ptr<V4L2VideoNode> mNode;
-    bool mIsStarted;
     bool mPollMe;
     size_t mPipelineDepth;
 };
