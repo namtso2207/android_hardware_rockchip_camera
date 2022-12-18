@@ -51,6 +51,7 @@ RKISP2ImguUnit::RKISP2ImguUnit(int cameraId,
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     mActiveStreams.inputStream = nullptr;
+    mIsFrameSkiped = true;
 
     mMessageThread = std::unique_ptr<MessageThread>(new MessageThread(this, "ImguThread"));
     if (mMessageThread == nullptr) {
@@ -739,6 +740,42 @@ RKISP2ImguUnit::completeRequest(std::shared_ptr<RKISP2ProcUnitSettings> &process
 }
 
 status_t
+RKISP2ImguUnit::skipBadFrames()
+{
+    PERFORMANCE_ATRACE_NAME("RKISP2ImguUnit::skipBadFrames");
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
+    status_t status = OK;
+    std::shared_ptr<V4L2VideoNode> *videoNode;
+
+    mIsFrameSkiped = true;
+    if (mCurPipeConfig->nodes.size() <= 0) {
+        LOGW("@%s: no video nodes in mCurPipeConfig, skip!!");
+        return OK;
+    }
+    // Notice: frame.initialSkip configured in camera3_profiles.xml should be
+    // the(actual skipFrams - 2) for the driver will alway drop 2 frames.
+    // the first frame can't be captured by ISP, the second frame will be
+    // captured to dummy buffer.
+    const RKISP2CameraCapInfo *cap = getRKISP2CameraCapInfo(mCameraId);
+    int skipFrames = cap->frameInitialSkip();
+
+    /* skip frames */
+    if (mMainOutWorker.get() && mMainOutWorker->mIsStarted) {
+        status = mMainOutWorker->skipBadFrames(skipFrames);
+        goto exit;
+    } else if (mSelfOutWorker.get() && mSelfOutWorker->mIsStarted) {
+        status = mSelfOutWorker->skipBadFrames(skipFrames);
+        goto exit;
+    } else if(mRawOutWorker.get() && mRawOutWorker->mIsStarted) {
+        status = mRawOutWorker->skipBadFrames(skipFrames);
+        goto exit;
+    }
+
+exit:
+    return status;
+}
+
+status_t
 RKISP2ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
@@ -765,6 +802,7 @@ RKISP2ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
      * Send poll request for every requests(even when error), so that we can
      * handle them in the right order.
      */
+     LOGI("%s, mCurPipeConfig->nodes.size():%d", __FUNCTION__, mCurPipeConfig->nodes.size());
     if (mCurPipeConfig->nodes.size() > 0)
         status |= mPollerThread->pollRequest(request->getId(), numOutputBufs, 3000,
                                              &(mCurPipeConfig->nodes));
@@ -848,7 +886,16 @@ status_t RKISP2ImguUnit::processNextRequest()
         if (needsPolling) {
             if (request->getInputBuffers()->size() == 0)
                 mCurPipeConfig->nodes.push_back((*pollDevice)->getNode());
+            LOGI("@%s:(*pollDevice)->name() %s, ", __FUNCTION__, (*pollDevice)->name());
             mRequestToWorkMap[request->getId()].push_back((std::shared_ptr<RKISP2IDeviceWorker>&)(*pollDevice));
+        }
+    }
+
+    /* skip frames*/
+    if (!mIsFrameSkiped) {
+        status = skipBadFrames();
+        if (status != OK) {
+            LOGE("@%s: failed to skipFrames!!");
         }
     }
 
@@ -870,6 +917,7 @@ RKISP2ImguUnit::kickstart()
     }
 
     mFirstRequest = false;
+    mIsFrameSkiped = false;
     return status;
 }
 

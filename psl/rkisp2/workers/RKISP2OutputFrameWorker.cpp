@@ -304,6 +304,42 @@ exit:
     return status < 0 ? status : OK;
 }
 
+status_t RKISP2OutputFrameWorker::skipBadFrames(int skipFrames)
+{
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
+    status_t ret = NO_ERROR;
+    V4L2BufferInfo outBuf;
+    int index;
+    fd_set fds;
+    struct timeval tv;
+    int res;
+
+    ALOGI("@%s enter, %s, skipFrames: %d. mIsStarted:%d", __FUNCTION__, mName.c_str(), skipFrames, mIsStarted);
+    FD_ZERO(&fds);
+    FD_SET(mNode->getFd(), &fds);
+
+    /* Timeout. */
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+
+    for (int i = 0; i < skipFrames; i++) {
+        res = select(mNode->getFd() + 1, &fds, NULL, NULL, &tv);
+        if (res <= 0) {
+            LOGE("@%s(%d) error select or select time out!!",__FUNCTION__,__LINE__);
+            return 0;
+        }
+        index = mNode->grabFrame(&outBuf);
+        ALOGI("device: %s, grabFrame buf index(%d)!", mNode->name(), index);
+        ret = mNode->putFrame(outBuf.vbuffer);
+        if (ret != OK) {
+            LOGE("Unable to putFrame from device: %s ret: %d", mNode->name(), ret);
+            return ret;
+        }
+    }
+
+    return ret;
+}
+
 status_t RKISP2OutputFrameWorker::run()
 {
     status_t status = NO_ERROR;
