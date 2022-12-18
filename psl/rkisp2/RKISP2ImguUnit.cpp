@@ -255,6 +255,9 @@ RKISP2ImguUnit::configStreamsDone()
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     if(!mConfigChanged)
         return OK;
+
+    /* queue buf before stream on */
+    return OK;
     /*
      * Moved from processNextRequest because this call will cost more than 300ms,
      * and cause CTS android.hardware.camera2.cts.RecordingTest#testBasicRecording
@@ -829,6 +832,14 @@ status_t RKISP2ImguUnit::processNextRequest()
             return status;
         } else
             status |= (*it)->prepareRun(msg);
+    }
+
+    /*add queue buf before stream on*/
+    if (mFirstRequest) {
+        status = kickstart();
+        if (status != OK) {
+            return status;
+        }
     }
 
     std::vector<std::shared_ptr<RKISP2FrameWorker>>::iterator pollDevice = mCurPipeConfig->pollableWorkers.begin();
