@@ -265,6 +265,7 @@ public:
     virtual void getConfig(FrameInfo &config) const { config = mConfig; }
 
     virtual status_t enumModes(std::vector<struct v4l2_sensor_mode> &modes);
+    std::atomic<int32_t> mBuffersInDevice;      /*!< Tracks the amount of buffers inside the driver. Goes from 0 to the size of the pool*/
 
 private:
     virtual status_t setPixFormat(V4L2Format &aFormat);
@@ -295,7 +296,6 @@ protected:
     // Device capture configuration
     FrameInfo mConfig;
 
-    std::atomic<int32_t> mBuffersInDevice;      /*!< Tracks the amount of buffers inside the driver. Goes from 0 to the size of the pool*/
     unsigned int mFrameCounter;             /*!< Tracks the number of output buffers produced by the device. Running counter. It is reset when we start the device*/
     unsigned int mInitialSkips;
 

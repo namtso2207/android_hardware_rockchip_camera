@@ -315,6 +315,12 @@ status_t RKISP2OutputFrameWorker::skipBadFrames(int skipFrames)
     int res;
 
     ALOGI("@%s enter, %s, skipFrames: %d. mIsStarted:%d", __FUNCTION__, mName.c_str(), skipFrames, mIsStarted);
+    if (mNode->mBuffersInDevice.load() == 0) {
+        LOGE("@%s: devices: %s, mBuffersInDevice is 0, can't skip!", __FUNCTION__, mName.c_str());
+        return NO_ERROR;
+    }
+
+
     FD_ZERO(&fds);
     FD_SET(mNode->getFd(), &fds);
 

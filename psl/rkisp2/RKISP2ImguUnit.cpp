@@ -760,18 +760,16 @@ RKISP2ImguUnit::skipBadFrames()
     int skipFrames = cap->frameInitialSkip();
 
     /* skip frames */
-    if (mMainOutWorker.get() && mMainOutWorker->mIsStarted) {
-        status = mMainOutWorker->skipBadFrames(skipFrames);
-        goto exit;
-    } else if (mSelfOutWorker.get() && mSelfOutWorker->mIsStarted) {
-        status = mSelfOutWorker->skipBadFrames(skipFrames);
-        goto exit;
-    } else if(mRawOutWorker.get() && mRawOutWorker->mIsStarted) {
-        status = mRawOutWorker->skipBadFrames(skipFrames);
-        goto exit;
+    std::vector<RKISP2ICaptureEventSource*>::iterator it = mListenerDeviceWorkers.begin();
+    for (;it != mListenerDeviceWorkers.end(); ++it) {
+        if ((*it == mMainOutWorker.get()) && mMainOutWorker->mIsStarted) {
+            status = mMainOutWorker->skipBadFrames(skipFrames);
+            break;
+        } else if ((*it == mSelfOutWorker.get()) && mSelfOutWorker->mIsStarted) {
+            status = mSelfOutWorker->skipBadFrames(skipFrames);
+            break;
+        }
     }
-
-exit:
     return status;
 }
 
@@ -891,14 +889,6 @@ status_t RKISP2ImguUnit::processNextRequest()
         }
     }
 
-    /* skip frames*/
-    if (!mIsFrameSkiped) {
-        status = skipBadFrames();
-        if (status != OK) {
-            LOGE("@%s: failed to skipFrames!!");
-        }
-    }
-
     return status;
 }
 
@@ -991,6 +981,14 @@ RKISP2ImguUnit::startProcessing(DeviceMessage pollmsg)
         /* clear the polling msg*/
         mPollerThread->flush(false);
         processReqNum =  mMessagesUnderwork.size();
+    }
+
+    /* skip frames*/
+    if (!mIsFrameSkiped && !mIsStillChangeStream) {
+        status = skipBadFrames();
+        if (status != OK) {
+            LOGE("@%s: failed to skipFrames!!");
+        }
     }
 
     for ( int i = 0; i < processReqNum; i++) {
