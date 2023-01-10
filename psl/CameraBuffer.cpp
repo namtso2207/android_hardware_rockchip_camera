@@ -741,7 +741,7 @@ allocateHandleBuffer(int w,
 #if defined(TARGET_RK3588)
 #define MAX_CAMERA_INSTANCES 6
 #else
-#define MAX_CAMERA_INSTANCES 2
+#define MAX_CAMERA_INSTANCES 4
 #endif
 // preAllocate buffer pool
 SharedItemPool<CameraBuffer> *PreAllocateBufferPool[MAX_CAMERA_INSTANCES];

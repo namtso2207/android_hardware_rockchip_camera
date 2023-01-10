@@ -29,6 +29,11 @@ IQ_FILES_PATH := $(TOP)/external/camera_engine_rkaiq/iqfiles/isp3x
 PRODUCT_COPY_FILES += \
 	$(call find-copy-subdir-files,*,$(IQ_FILES_PATH)/,$(TARGET_COPY_OUT_VENDOR)/etc/camera/rkisp2/)
 endif
+ifneq ($(filter rk3562, $(strip $(TARGET_BOARD_PLATFORM))), )
+IQ_FILES_PATH := $(TOP)/external/camera_engine_rkaiq/iqfiles/isp32_lite
+PRODUCT_COPY_FILES += \
+	$(call find-copy-subdir-files,*,$(IQ_FILES_PATH)/,$(TARGET_COPY_OUT_VENDOR)/etc/camera/rkisp2/)
+endif
 endif
 
 

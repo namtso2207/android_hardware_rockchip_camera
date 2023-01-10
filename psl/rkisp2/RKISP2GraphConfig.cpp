@@ -2663,7 +2663,8 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
         LOGE("getMediaDevInfo info.model:%s",info.model);
         //rk356x dual raw camera
         if ((fbcpathName.find("fbcpath") == std::string::npos) && (std::string(info.model).find("lvds")!= std::string::npos) &&
-            (mipName.find("dphy") != std::string::npos) && (mipName2.find("mipi") != std::string::npos) && (aFormat.format.code >= MEDIA_BUS_FMT_SBGGR8_1X8)) {
+            (mipName.find("dphy") != std::string::npos) && (mipName2.find("mipi") != std::string::npos) && (aFormat.format.code >= MEDIA_BUS_FMT_SBGGR8_1X8) &&
+            (scaleName.find("scale") == std::string::npos)) {
             //for dual camera
                 addLinkParams(mipName, mipSrcPad, mipName2, csiSinkPad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
                 addLinkParams(mipName2, 1, "stream_cif_mipi_id0", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
@@ -2678,7 +2679,7 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
                 addLinkParams(info.model, 0, "rkisp-isp-subdev", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
         } else if ((std::string(info.model).find("lvds")!= std::string::npos)&&(mipName.find("dphy") != std::string::npos)
             && (mipName2.find("mipi") != std::string::npos) && scaleName.find("scale") != std::string::npos) {
-            //for rk3588
+            //for rk3588 rk3562
             if(aFormat.format.code == MEDIA_BUS_FMT_UYVY8_2X8) {
                 addLinkParams(mipName, mipSrcPad, mipName2, csiSinkPad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
                 addLinkParams(mipName2, 1, "stream_cif_mipi_id0", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
