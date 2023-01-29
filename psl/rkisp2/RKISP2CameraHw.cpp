@@ -639,7 +639,12 @@ status_t RKISP2CameraHw::doConfigureStreams(UseCase newUseCase,
         return status;
     }
     mGCM.dumpStreamConfig(streams);
-    return mImguUnit->configStreamsDone();
+
+    if (mImguUnit)
+        status = mImguUnit->configStreamsDone();
+    else
+        status = INVALID_OPERATION;
+    return status;
 }
 
 status_t

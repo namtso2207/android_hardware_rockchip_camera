@@ -60,6 +60,7 @@ RequestThread::RequestThread(int cameraId, ICameraHw *aCameraHW) :
 
 RequestThread::~RequestThread()
 {
+    HAL_TRACE_CALL(CAM_GLBL_DBG_ERR);
     if (mThreadRunning) {
         Message msg;
         msg.id = MESSAGE_ID_EXIT;
@@ -130,6 +131,11 @@ RequestThread::deinit()
 status_t
 RequestThread::configureStreams(camera3_stream_configuration_t *stream_list)
 {
+    if (!mInitialized) {
+        LOGE("@%s not init, return!", __FUNCTION__);
+        return NO_INIT;
+    }
+
     Message msg;
     msg.id = MESSAGE_ID_CONFIGURE_STREAMS;
     msg.data.streams.list = stream_list;
@@ -140,6 +146,11 @@ status_t
 RequestThread::handleConfigureStreams(Message & msg)
 {
     LOGI("@%s", __FUNCTION__);
+
+    if (!mInitialized) {
+        LOGE("@%s not init, return!", __FUNCTION__);
+        return NO_INIT;
+    }
 
     status_t status = NO_ERROR;
     mLastSettings.clear();
@@ -230,6 +241,11 @@ status_t
 RequestThread::constructDefaultRequest(int type,
                                             camera_metadata_t** meta)
 {
+    if (!mInitialized) {
+        LOGE("@%s not init, return!", __FUNCTION__);
+        return NO_INIT;
+    }
+
     Message msg;
     msg.id = MESSAGE_ID_CONSTRUCT_DEFAULT_REQUEST;
     msg.data.defaultRequest.type= type;
@@ -240,6 +256,11 @@ RequestThread::constructDefaultRequest(int type,
 status_t
 RequestThread::handleConstructDefaultRequest(Message & msg)
 {
+    if (!mInitialized) {
+        LOGE("@%s not init, return!", __FUNCTION__);
+        return NO_INIT;
+    }
+
     int requestType = msg.data.defaultRequest.type;
     const camera_metadata_t* defaultRequest;
     defaultRequest = mCameraHw->getDefaultRequestSettings(requestType);
@@ -251,6 +272,17 @@ RequestThread::handleConstructDefaultRequest(Message & msg)
 status_t
 RequestThread::processCaptureRequest(camera3_capture_request_t *request)
 {
+
+    if (!mInitialized) {
+        LOGE("@%s not init, return!", __FUNCTION__);
+        return NO_INIT;
+    }
+
+    if (request == nullptr) {
+        LOGE("@%s request is null, return!", __FUNCTION__);
+        return BAD_VALUE;
+    }
+
     Message msg;
     msg.id = MESSAGE_ID_PROCESS_CAPTURE_REQUEST;
     msg.data.request3.request3 = request;
@@ -265,8 +297,13 @@ status_t
 RequestThread::handleProcessCaptureRequest(Message & msg)
 {
     status_t status = BAD_VALUE;
-
     Camera3Request *request;
+
+    if (!mInitialized) {
+        LOGE("@%s not init, return!", __FUNCTION__);
+        return NO_INIT;
+    }
+
     status = mRequestsPool.acquireItem(&request);
     if (status != NO_ERROR) {
         LOGE("Failed to acquire empty  Request from the pool (%d)", status);
@@ -335,6 +372,16 @@ badRequest:
 int
 RequestThread::returnRequest(Camera3Request* req)
 {
+    if (!mInitialized) {
+        LOGE("@%s not init, return!", __FUNCTION__);
+        return NO_INIT;
+    }
+
+    if (req == nullptr) {
+        LOGE("@%s request is null, return!", __FUNCTION__);
+        return BAD_VALUE;
+    }
+
     Message msg;
     msg.id = MESSAGE_ID_REQUEST_DONE;
     msg.request = req;
@@ -361,6 +408,16 @@ RequestThread::waitRequestsDrain() {
 
 void
 RequestThread::recycleRequest(Camera3Request* request) {
+    if (!mInitialized) {
+        LOGE("@%s not init, return!", __FUNCTION__);
+        return;
+    }
+
+    if (request == nullptr) {
+        LOGE("@%s request is null, return!", __FUNCTION__);
+        return;
+    }
+
     if(request->isAnyBufActive()) {
         mActiveRequest.push_back(request);
         LOGI("@%s : buffers of req(%d) are holding the release fence, total active requests:%zu",
@@ -394,6 +451,16 @@ RequestThread::handleReturnRequest(Message & msg)
 {
     Camera3Request* request = msg.request;
     status_t status = NO_ERROR;
+
+    if (!mInitialized) {
+        LOGE("@%s not init, return!", __FUNCTION__);
+        return NO_INIT;
+    }
+
+    if (request == nullptr) {
+        LOGE("@%s request is null, return!", __FUNCTION__);
+        return BAD_VALUE;
+    }
 
     recycleRequest(request);
     mRequestsInHAL--;
@@ -550,6 +617,16 @@ RequestThread::captureRequest(Camera3Request* request)
 {
     status_t status;
     CameraStream *stream = nullptr;
+
+    if (!mInitialized) {
+        LOGE("@%s not init, return!", __FUNCTION__);
+        return NO_INIT;
+    }
+
+    if (request == nullptr) {
+        LOGE("@%s request is null, return!", __FUNCTION__);
+        return BAD_VALUE;
+    }
 
     status = mResultProcessor->registerRequest(request);
     if (status != NO_ERROR) {

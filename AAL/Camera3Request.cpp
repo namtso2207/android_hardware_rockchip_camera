@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "Request"
+#define LOG_TAG "Camera3Request"
 
 #include "LogHelper.h"
 #include "PerformanceTraces.h"
@@ -315,6 +315,10 @@ Camera3Request::getId()
 bool
 Camera3Request::isAnyBufActive()
 {
+    if(!mInitialized) {
+        ALOGD("@%s not init, return!", __FUNCTION__);
+        return false;
+    }
     for (auto it : mOutputBuffers) {
         if(it->isfenceActive() == true)
             return true;

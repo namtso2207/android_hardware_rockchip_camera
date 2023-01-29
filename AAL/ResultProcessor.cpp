@@ -188,6 +188,7 @@ status_t ResultProcessor::shutterDone(Camera3Request* request,
 
 status_t ResultProcessor::handleShutterDone(Message &msg)
 {
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     status_t status = NO_ERROR;
     int reqId = 0;
     Camera3Request* request = msg.request;
@@ -267,6 +268,7 @@ status_t ResultProcessor::metadataDone(Camera3Request* request,
 
 status_t ResultProcessor::handleMetadataDone(Message &msg)
 {
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     status_t status = NO_ERROR;
     Camera3Request* request = msg.request;
     int reqId = request->getId();
