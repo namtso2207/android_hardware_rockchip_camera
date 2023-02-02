@@ -212,6 +212,11 @@ ifeq ($(strip $(TARGET_BOARD_PLATFORM)),rk3368)
 LOCAL_CFLAGS += -DTARGET_RK3368
 endif
 
+# rk3528 gralloc module from other platforms
+ifeq ($(strip $(TARGET_BOARD_PLATFORM)),rk3528)
+LOCAL_CFLAGS += -DTARGET_RK3528
+endif
+
 ifeq ($(strip $(TARGET_BOARD_PLATFORM)),rk3126c)
 LOCAL_CFLAGS += -DTARGET_RK312X
 endif
