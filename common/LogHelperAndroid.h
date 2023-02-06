@@ -122,13 +122,16 @@ inline ScopedLog(int level, const char* name) :
 }
 
 inline ~ScopedLog() {
-    prctl(PR_GET_NAME, threadName);
     clock_gettime(CLOCK_MONOTONIC_COARSE, &curr_tm);
+    diff_time = get_time_diff_ms(&last_tm,&curr_tm);
 
     if (g_cam_log[CAM_MODULE][mLevel] == 1) {
-        ALOGD("Thread[%s] EXIT-%s use %ldms", threadName, mName, get_time_diff_ms(&last_tm,&curr_tm));
-    } else if (get_time_diff_ms(&last_tm,&curr_tm) > 60){
-        ALOGW("Thread[%s] EXIT-%s use %ldms", threadName, mName, get_time_diff_ms(&last_tm,&curr_tm));
+        ALOGD("Thread[%s] EXIT-%s use %ldms", threadName,mName, diff_time);
+    } else if (diff_time > 100) {
+        if (diff_time > 1000)
+            ALOGE("Thread[%s] EXIT-%s over 1s, use %ldms", threadName,mName, diff_time);
+        else
+            ALOGW("Thread[%s] EXIT-%s use %ldms", threadName,mName, diff_time);
     }
 }
 
@@ -138,6 +141,7 @@ private:
     char threadName[20];
     struct timespec last_tm;
     struct timespec curr_tm;
+    long diff_time;
 };
 
 /* reads and updates camera logging properties */

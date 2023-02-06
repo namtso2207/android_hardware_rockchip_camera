@@ -1124,7 +1124,7 @@ void RKISP2ImguUnit::getConfigedSensorOutputSize(uint32_t &size)
 void
 RKISP2ImguUnit::messageThreadLoop(void)
 {
-    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
+    LOGD("@%s - Start", __FUNCTION__);
 
     mThreadRunning = true;
     while (mThreadRunning) {

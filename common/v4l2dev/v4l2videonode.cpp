@@ -1287,6 +1287,8 @@ status_t V4L2VideoNode::setBufferPool(void **pool, unsigned int poolSize,
 status_t V4L2VideoNode::setBufferPool(std::vector<V4L2Buffer> &pool,
                                       bool cached, int memType)
 {
+    HAL_TRACE_CALL(CAM_GLBL_DBG_ERR);
+    ALOGD("@%s(%d) begin, memType(%s)",__FUNCTION__,__LINE__, ENUM2STR(v4l2_memory_enum, memType));
     V4L2BufferInfo vinfo;
     int ret;
     uint32_t cacheflags = V4L2_BUF_FLAG_NO_CACHE_INVALIDATE |

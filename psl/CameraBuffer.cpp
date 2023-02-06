@@ -754,7 +754,7 @@ creatHandlerBufferPool(int cameraId,
                        int usage,
                        int nums)
 {
-    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
+    HAL_TRACE_CALL(CAM_GLBL_DBG_ERR);
     PERFORMANCE_ATRACE_NAME_SNPRINTF("PreBufPool %dx%d %d", w, h, nums);
     arc::CameraBufferManager* bufManager = arc::CameraBufferManager::GetInstance();
     buffer_handle_t handle;

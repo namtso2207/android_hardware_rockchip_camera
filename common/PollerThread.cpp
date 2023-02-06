@@ -259,7 +259,7 @@ status_t PollerThread::flush(bool sync, bool clear)
 
 void PollerThread::messageThreadLoop()
 {
-    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
+    LOGD("@%s - Start", __FUNCTION__);
     mThreadRunning = true;
 
     while (mThreadRunning) {
@@ -315,6 +315,7 @@ void PollerThread::messageThreadLoop()
         if (status != NO_ERROR)
             LOGE("error %d in handling message: %d", status, (int)msg.id);
     }
+    LOGD("%s: Exit", __FUNCTION__);
 }
 
 status_t PollerThread::requestExitAndWait(void)

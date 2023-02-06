@@ -238,13 +238,15 @@ void rk_camera_set_dbg_log_properties(void) {
      * a module is less or equal to the level specified in the property for
      * the module, or less or equal the level specified by the global logging
      * property. Currently we don't allow INFO logging to be turned off */
-    ALOGD("@%s: g_cam_log[%d] = : ", __FUNCTION__, i);
+    if (i == CAM_HAL_MODULE)
+        ALOGD("@%s: g_cam_log[%d] = : ", __FUNCTION__, i);
     for (j = CAM_GLBL_DBG_NONE; j <= CAM_GLBL_DBG_LOW; j++) {
       g_cam_log[i][j] = (cam_loginfo[CAM_NO_MODULE].level != CAM_GLBL_DBG_NONE)     &&
                         (cam_loginfo[i].level             != CAM_GLBL_DBG_NONE)     &&
                         ((j                                <= cam_loginfo[i].level) ||
                          (j                                <= cam_loginfo[CAM_NO_MODULE].level));
-      ALOGD("[%d]", g_cam_log[i][j]);
+      if (i == CAM_HAL_MODULE)
+        ALOGD("[%d]", g_cam_log[i][j]);
     }
   }
   pthread_mutex_unlock(&dbg_log_mutex);
