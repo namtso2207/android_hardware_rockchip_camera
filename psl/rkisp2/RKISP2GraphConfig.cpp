@@ -2574,6 +2574,7 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
     string paramName = "none";
     string fbcpathName = "none";
     string scaleName = "none";
+    string iqtoolName = "none";
     std::vector<std::string> elementNames;
     PlatformData::getCameraHWInfo()->getMediaCtlElementNames(elementNames);
     struct v4l2_dv_timings timings;
@@ -2619,6 +2620,8 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
             fbcpathName = it;
         if (it.find("scale_ch") != std::string::npos)
             scaleName = it;
+        if (it.find("iqtool") != std::string::npos)
+            iqtoolName = it;
     }
     LOGD("%s: mipName = %s", __FUNCTION__, mipName.c_str());
     LOGD("%s: mipName2 = %s", __FUNCTION__, mipName2.c_str());
@@ -2631,6 +2634,7 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
     LOGD("%s: paramName = %s", __FUNCTION__, paramName.c_str());
     LOGD("%s: fbcpathName = %s", __FUNCTION__, fbcpathName.c_str());
     LOGD("%s: scaleName = %s", __FUNCTION__, scaleName.c_str());
+    LOGD("%s: iqtoolName = %s", __FUNCTION__, iqtoolName.c_str());
 
     int ispOutWidth, ispInWidth ,ispOutHeight, ispInHeight;
     uint32_t ispOutFormat ,ispInFormat, videoOutFormat;
@@ -2707,6 +2711,7 @@ status_t RKISP2GraphConfig::getImguMediaCtlConfig(int32_t cameraId,
 
                 addLinkParams("rkisp-isp-subdev", 2, "rkisp_mainpath", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
                 addLinkParams("rkisp-isp-subdev", 2, "rkisp_selfpath", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+                addLinkParams("rkisp-isp-subdev", 2, "rkisp_iqtool", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
                 // addLinkParams("rkisp-isp-subdev", 2, "rkisp_fbcpath", 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
             }
 	    } else if ((std::string(info.model).find("lvds")!= std::string::npos)&&(mipName.find("dphy0") != std::string::npos)
