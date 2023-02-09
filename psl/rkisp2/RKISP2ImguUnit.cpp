@@ -258,7 +258,7 @@ RKISP2ImguUnit::configStreamsDone()
         return OK;
 
     /* queue buf before stream on */
-    return OK;
+    // return OK;
     /*
      * Moved from processNextRequest because this call will cost more than 300ms,
      * and cause CTS android.hardware.camera2.cts.RecordingTest#testBasicRecording
@@ -907,7 +907,7 @@ RKISP2ImguUnit::kickstart()
     }
 
     mFirstRequest = false;
-    mIsFrameSkiped = false;
+    mIsFrameSkiped = true;
     return status;
 }
 
