@@ -114,4 +114,6 @@ V3.0.1
 V3.0.2
 	- rkisp2: support xml config multi camera mode.
 	- rkisp2: fix rk356x double camera link issue.
-
+V3.0.3
+    - rkisp2: add rk3562 support.
+    - rkisp2: add rkisp_iqtool link for rk3588 rk3562.
