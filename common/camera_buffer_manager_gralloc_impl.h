@@ -15,8 +15,10 @@
 
 #include <base/synchronization/lock.h>
 
+#if defined TARGET_RK3368 || defined TARGET_RK3528
 #ifdef TARGET_RK3368
 #include <hardware/img_gralloc_public.h>
+#endif
 #if PLATFORM_SDK_API_VERSION >= 31
 #include <hardware/hardware_rockchip.h>
 #include <hardware/gralloc_rockchip.h>
