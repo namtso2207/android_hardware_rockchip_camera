@@ -52,8 +52,8 @@ RKISP2MediaCtlHelper::RKISP2MediaCtlHelper(std::shared_ptr<MediaController> sens
 RKISP2MediaCtlHelper::~RKISP2MediaCtlHelper()
 {
     closeVideoNodes();
-    resetLinks(&mConfigedMediaCtlConfigs[RKISP2IStreamConfigProvider::CIO2]);
-    resetLinks(&mConfigedMediaCtlConfigs[RKISP2IStreamConfigProvider::IMGU_COMMON]);
+    // resetLinks(&mConfigedMediaCtlConfigs[RKISP2IStreamConfigProvider::CIO2]);
+    // resetLinks(&mConfigedMediaCtlConfigs[RKISP2IStreamConfigProvider::IMGU_COMMON]);
 }
 
 void RKISP2MediaCtlHelper::getConfigedHwPathSize(const char* pathName, uint32_t &size) {
