@@ -628,6 +628,14 @@ RequestThread::captureRequest(Camera3Request* request)
         return BAD_VALUE;
     }
 
+    /* Pre filter request over HW pipeline & take photo condition */
+    status = mCameraHw->preProcessRequest(request,mRequestsInHAL);
+    if (status == REQBLK_WAIT_ALL_PREVIOUS_COMPLETED
+        || status == REQBLK_WAIT_ONE_REQUEST_COMPLETED
+        || status == REQBLK_WAIT_ALL_PREVIOUS_COMPLETED_AND_FENCE_SIGNALED) {
+        return status;
+    }
+
     status = mResultProcessor->registerRequest(request);
     if (status != NO_ERROR) {
         LOGE("Error registering request to result Processor- bug");

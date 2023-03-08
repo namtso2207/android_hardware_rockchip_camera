@@ -31,8 +31,7 @@ CameraStream::CameraStream(int seqNo, camera3_stream_t * stream,
                                                           mOutputBuffersInHal(0),
                                                           mStream3(stream),
                                                           mFrameCount(0),
-                                                          mLastFrameCount(0),
-                                                          mLastRequest(NULL)
+                                                          mLastFrameCount(0)
 {
 }
 
@@ -42,7 +41,6 @@ CameraStream::~CameraStream()
 
     std::unique_lock<std::mutex> l(mPendingLock);
     mPendingRequests.clear();
-    mLastRequest = NULL;
     l.unlock();
 
     mCamera3Buffers.clear();
@@ -100,6 +98,7 @@ void CameraStream::showDebugFPS(int streamType)
         switch(streamType) {
             case STREAM_PREVIEW:
                 LOGI("%s: Preview FPS : %.4f: mFrameCount=%d", __func__, fps, mFrameCount);
+                LOGI("%s, mPendingRequests size=%zu", __func__, mPendingRequests.size());
                 break;
             case STREAM_VIDEO:
                 LOGI("%s: Video FPS : %.4f", __func__, fps);
@@ -126,7 +125,6 @@ status_t CameraStream::captureDone(std::shared_ptr<CameraBuffer> aBuffer,
      * requests, but reprocessing requests may be completed before normal output
      * requests.
      */
-
     for (uint32_t i = 0; i < mPendingRequests.size(); i++) {
         Camera3Request *pendingRequest;
         pendingRequest = mPendingRequests.at(i);
@@ -179,9 +177,7 @@ status_t CameraStream::processRequest(Camera3Request* request)
     }
 
     std::unique_lock<std::mutex> l(mPendingLock);
-    if (mLastRequest != request)
-        mPendingRequests.push_back(request);
-    mLastRequest = request;
+    mPendingRequests.push_back(request);
     l.unlock();
 
     buffer = request->findBuffer(this);

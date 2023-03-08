@@ -448,13 +448,62 @@ RKISP2CameraHw::bindStreams(std::vector<CameraStreamNode *> activeStreams)
 }
 
 status_t
-RKISP2CameraHw::processRequest(Camera3Request* request, int inFlightCount)
+RKISP2CameraHw::preProcessRequest(Camera3Request* request, int inFlightCount)
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     if (inFlightCount > mPipelineDepth) {
         LOGI("@%s:blocking request %d", __FUNCTION__, request->getId());
         return RequestThread::REQBLK_WAIT_ONE_REQUEST_COMPLETED;
     }
+
+    status_t status = NO_ERROR;
+    // Check reconfiguration
+    UseCase newUseCase = checkUseCase(request);
+    camera_metadata_ro_entry entry;
+    int32_t testPatternMode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
+    entry = request->getSettings()->find(ANDROID_SENSOR_TEST_PATTERN_MODE);
+    if(entry.count == 1) {
+        status = getTestPatternMode(request, &testPatternMode);
+        CheckError(status != NO_ERROR, status, "@%s: failed to get test pattern mode", __FUNCTION__);
+    }
+
+    //workround for CTS:ImageReaderTest#testRepeatingJpeg
+    //this test will call mReader.acquireLatestImage, this function will
+    //do get latest frame and acquire it's fence until there no new frame
+    //queued. Now, we return the jpeg buffer back to framework in advance
+    //and then signal the fence after some latency. this will result
+    //acquireLatestImage can alway get the new frame and cause infinite loops
+    //so wait previous request completed and fence signaled to avoid this.
+    std::vector<camera3_stream_t*>& streams = (mUseCase == USECASE_STILL) ?
+                                              mStreamsStill : mStreamsVideo;
+    int jpegStreamCnt = 0;
+    for (auto it : streams) {
+        if (it->format == HAL_PIXEL_FORMAT_BLOB)
+            jpegStreamCnt++;
+    }
+    if (jpegStreamCnt == streams.size()) {
+        LOGI("There are only blob streams, it should be a cts case rather than a normal case");
+        if (inFlightCount > 1) {
+            return RequestThread::REQBLK_WAIT_ALL_PREVIOUS_COMPLETED_AND_FENCE_SIGNALED;
+        }
+    }
+
+    if (newUseCase != mUseCase || testPatternMode != mTestPatternMode ||
+        (newUseCase == USECASE_TUNING && mTuningSizeChanged)) {
+        LOGI("%s: request %d need reconfigure, infilght %d, usecase %d -> %d", __FUNCTION__,
+                request->getId(), inFlightCount, mUseCase, newUseCase);
+        if (inFlightCount > 1) {
+            return RequestThread::REQBLK_WAIT_ALL_PREVIOUS_COMPLETED;
+        }
+    }
+
+    return status;
+}
+
+status_t
+RKISP2CameraHw::processRequest(Camera3Request* request, int inFlightCount)
+{
+    HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
 
     status_t status = NO_ERROR;
     // Check reconfiguration

@@ -46,6 +46,8 @@ public:
     */
     virtual status_t processRequest(Camera3Request* request,
                                     int inFlightCount) = 0;
+    virtual status_t preProcessRequest(Camera3Request* request,
+                                    int inFlightCount) = 0;
     virtual status_t flush() = 0;
 
     /**

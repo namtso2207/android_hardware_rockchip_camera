@@ -106,7 +106,6 @@ private: /* Members */
     int mFrameCount;
     int mLastFrameCount;
     nsecs_t mLastFpsTime;
-    Camera3Request* mLastRequest;
 };
 
 } NAMESPACE_DECLARATION_END
