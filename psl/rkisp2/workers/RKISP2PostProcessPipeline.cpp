@@ -1318,6 +1318,7 @@ RKISP2PostProcessPipeline::handleFlush(Message &msg)
 {
     LOGD("@%s : enter", __FUNCTION__);
     status_t status = OK;
+    return NO_ERROR;
     for (int i = 0; i < kMaxLevel; i++)
         for (auto iter : mPostProcUnitArray[i])
            status |= iter->flush();
