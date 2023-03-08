@@ -1061,7 +1061,7 @@ RKISP2ControlUnit::requestExitAndWait()
 {
     Message msg;
     msg.id = MESSAGE_ID_EXIT;
-    status_t status = mMessageQueue.flush_send(&msg, MESSAGE_ID_EXIT, 3000);
+    status_t status = mMessageQueue.send(&msg, MESSAGE_ID_EXIT);
     status |= mMessageThread->requestExitAndWait();
     return status;
 }
@@ -1710,7 +1710,7 @@ RKISP2ControlUnit::flush(int configChanged)
     mMessageQueue.remove(MESSAGE_ID_NEW_REQUEST);
     mMessageQueue.remove(MESSAGE_ID_NEW_SHUTTER);
     mMessageQueue.remove(MESSAGE_ID_NEW_REQUEST_DONE);
-    return mMessageQueue.flush_send(&msg, MESSAGE_ID_FLUSH, 3000);
+    return mMessageQueue.send(&msg, MESSAGE_ID_FLUSH);
 }
 
 status_t

@@ -1204,7 +1204,7 @@ RKISP2ImguUnit::flush(void)
 
     mMessageQueue.remove(MESSAGE_ID_POLL);
 
-    return mMessageQueue.flush_send(&msg, MESSAGE_ID_FLUSH, 3000);
+    return mMessageQueue.send(&msg, MESSAGE_ID_FLUSH);
 }
 
 status_t
