@@ -204,8 +204,8 @@ status_t RKISP2OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     if (!mStream)
         return NO_ERROR;
 
-//    if (mIsStarted == false) /* add queue buf before stream on, no need this */
-//        return OK;
+    if (mIsStarted == false)
+        return OK;
 
     mMsg = msg;
 
@@ -243,6 +243,14 @@ status_t RKISP2OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     // if dump raw, need to poll raw video node
     } else if ((mName == "RawWork") && mStream) {
         LOGI("@%s : Dump raw enabled", __FUNCTION__);
+        mPollMe = true;
+    } else if ((mName == "MainWork") && mStream) {
+        LOGI("@%s : stream %p  MainWork for BLOB!",
+            __FUNCTION__, mStream);
+        mPollMe = true;
+    } else if ((mName == "SelfWork") && mStream) {
+        LOGI("@%s : stream %p  SelfWork for BLOB!",
+            __FUNCTION__, mStream);
         mPollMe = true;
     } else {
         LOGD("No work for this worker mStream: %p", mStream);
@@ -304,11 +312,10 @@ status_t RKISP2OutputFrameWorker::skipBadFrames(int skipFrames)
     int res;
 
     ALOGI("@%s enter, %s, skipFrames: %d. mIsStarted:%d", __FUNCTION__, mName.c_str(), skipFrames, mIsStarted);
-    if (mNode->mBuffersInDevice.load() == 0) {
+    if (mNode->getBufsInDeviceCount() == 0) {
         LOGE("@%s: devices: %s, mBuffersInDevice is 0, can't skip!", __FUNCTION__, mName.c_str());
         return NO_ERROR;
     }
-
 
     FD_ZERO(&fds);
     FD_SET(mNode->getFd(), &fds);

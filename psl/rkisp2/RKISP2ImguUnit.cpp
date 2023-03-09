@@ -257,8 +257,6 @@ RKISP2ImguUnit::configStreamsDone()
     if(!mConfigChanged)
         return OK;
 
-    /* queue buf before stream on */
-    // return OK;
     /*
      * Moved from processNextRequest because this call will cost more than 300ms,
      * and cause CTS android.hardware.camera2.cts.RecordingTest#testBasicRecording
@@ -269,6 +267,9 @@ RKISP2ImguUnit::configStreamsDone()
     if (status != OK) {
        return status;
     }
+
+    /* queue buf before stream on */
+    return status;
 
     int32_t duration = 30;    //default duration 30ms
     status = PlatformData::getCameraHWInfo()->getSensorFrameDuration(mCameraId, duration);
