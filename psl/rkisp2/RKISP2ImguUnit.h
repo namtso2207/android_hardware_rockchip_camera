@@ -156,6 +156,7 @@ private:
 
     bool mTakingPicture;
     bool mIsFrameSkiped;
+    bool mIsIncreaseTimeout = false;
 
     RKISP2CtrlLoop *mCtrlLoop;
 };

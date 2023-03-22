@@ -145,6 +145,9 @@ RKISP2ImguUnit::~RKISP2ImguUnit()
 status_t RKISP2ImguUnit::stopAllWorkers()
 {
     status_t status= NO_ERROR;
+
+    mIsIncreaseTimeout = false;
+
     // Stop all video nodes
     status = mMainOutWorker->stopWorker();
     if (status != OK) {
@@ -199,6 +202,20 @@ RKISP2ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams, boo
     mCurPipeConfig = nullptr;
     mTakingPicture = false;
     mFlushing = false;
+
+    /*
+     * use for debuging: ISP get RAW data from tools
+     * In this mode, the timeout period of apk needs to be extended
+     * this property will be set by rkaiq_tool_server
+     */
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+    property_get("persist.vendor.camera.polltime.debug", property_value, "0");
+    if(atoi(property_value) > 0) {
+        LOGE("@%s : the timeout of pollRequest is increased to 300s", __FUNCTION__);
+        mIsIncreaseTimeout = true;
+    } else {
+        mIsIncreaseTimeout = false;
+    }
 
     for (unsigned int i = 0; i < activeStreams.size(); ++i) {
         // treat CAMERA3_STREAM_BIDIRECTIONAL as combination with an input
@@ -801,10 +818,17 @@ RKISP2ImguUnit::handleMessageCompleteReq(DeviceMessage &msg)
      * Send poll request for every requests(even when error), so that we can
      * handle them in the right order.
      */
-     LOGI("%s, mCurPipeConfig->nodes.size():%d", __FUNCTION__, mCurPipeConfig->nodes.size());
-    if (mCurPipeConfig->nodes.size() > 0)
-        status |= mPollerThread->pollRequest(request->getId(), numOutputBufs, 3000,
-                                             &(mCurPipeConfig->nodes));
+    LOGI("%s, mCurPipeConfig->nodes.size():%d", __FUNCTION__, mCurPipeConfig->nodes.size());
+    if (mCurPipeConfig->nodes.size() > 0) {
+        if (mIsIncreaseTimeout) {
+            status |= mPollerThread->pollRequest(request->getId(), numOutputBufs, 300 * 1000,
+                                                 &(mCurPipeConfig->nodes));
+        } else {
+            status |= mPollerThread->pollRequest(request->getId(), numOutputBufs, 3000,
+                                                 &(mCurPipeConfig->nodes));
+        }
+    }
+
     return status;
 }
 
