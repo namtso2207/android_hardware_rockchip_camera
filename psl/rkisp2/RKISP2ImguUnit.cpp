@@ -146,8 +146,6 @@ status_t RKISP2ImguUnit::stopAllWorkers()
 {
     status_t status= NO_ERROR;
 
-    mIsIncreaseTimeout = false;
-
     // Stop all video nodes
     status = mMainOutWorker->stopWorker();
     if (status != OK) {
