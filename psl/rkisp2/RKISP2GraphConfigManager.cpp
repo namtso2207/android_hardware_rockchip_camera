@@ -127,6 +127,12 @@ status_t RKISP2GraphConfigManager::mapStreamToKey(const std::vector<camera3_stre
            availableStreams[secondaryOutputIndex]->height > SP_MAX_HEIGHT) {
             secondaryOutputIndex = -1;
         }
+        if((availableStreams[secondaryOutputIndex]->width == availableStreams[mainOutputIndex]->width) &&
+            (availableStreams[secondaryOutputIndex]->height == availableStreams[mainOutputIndex]->height)) {
+            ALOGD("two stream are the same size, only use Mainpath!!");
+            secondaryOutputIndex = -1;
+        }
+
     } else {
         mainOutputIndex = 0;
         // find the maxium size stream
