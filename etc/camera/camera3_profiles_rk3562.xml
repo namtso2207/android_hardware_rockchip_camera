@@ -524,7 +524,7 @@
             <control.aeAvailableModes value="ON,OFF"/>
             <control.aeLockAvailable value="FALSE"/>
             <!-- <control.aeAvailableTargetFpsRanges value="15,30,30,30,60,60"/> -->
-            <control.aeAvailableTargetFpsRanges value="15,25,25,25,30,30"/>
+            <control.aeAvailableTargetFpsRanges value="15,30,30,30"/>
             <control.aeCompensationRange value="-6,6"/>
             <control.aeCompensationStep value="1,3"/>
             <control.afAvailableModes value="OFF,AUTO,MACRO,CONTINUOUS_VIDEO,CONTINUOUS_PICTURE,EDOF"/>
@@ -540,7 +540,7 @@
             <!-- /* TODO */ -->
             <!-- The aspect ratio of the largest thumbnail size will be same as the aspect ratio of largest JPEG output size -->
             <!-- buf hw encode may not support such thumbnail size, so if we should change the jpeg output size? -->
-            <jpeg.availableThumbnailSizes value="0,0,160,120,176,144,264,196,320,180,320,240,"/> <!-- INCREASING ORDER -->
+            <jpeg.availableThumbnailSizes value="0,0,160,120,176,144,256,196,320,180,320,240,"/> <!-- INCREASING ORDER -->
             <!-- <jpeg.availableThumbnailSizes value="0,0,160,120,320,180,320,240"/> -->
             <!-- Lens Info-->
             <!-- TODO: availableApertures now is fake for we do not get the real apertures -->
@@ -650,7 +650,7 @@
             <scaler.availableMaxDigitalZoom value="4.0"/>
             <scaler.availableInputOutputFormatsMap value="IMPLEMENTATION_DEFINED,2,YCbCr_420_888,BLOB,YCbCr_420_888,2,YCbCr_420_888,BLOB"/>
 	    <scaler.availableStreamConfigurations value="
-                BLOB,4224x3136,OUTPUT,
+                BLOB,4096x3136,OUTPUT,
                 BLOB,3840x2160,OUTPUT,
                 BLOB,3264x2448,OUTPUT,
                 BLOB,2592x1944,OUTPUT,
@@ -662,11 +662,6 @@
                 BLOB,352x288,OUTPUT,
                 BLOB,320x240,OUTPUT,
                 BLOB,176x144,OUTPUT,
-                YCbCr_420_888,4224x3136,OUTPUT,
-                YCbCr_420_888,3840x2160,OUTPUT,
-                YCbCr_420_888,3264x2448,OUTPUT,
-                YCbCr_420_888,2592x1944,OUTPUT,
-                YCbCr_420_888,2112x1568,OUTPUT,
                 YCbCr_420_888,1920x1080,OUTPUT,
                 YCbCr_420_888,1280x960,OUTPUT,
                 YCbCr_420_888,1280x720,OUTPUT,
@@ -674,11 +669,6 @@
                 YCbCr_420_888,352x288,OUTPUT,
                 YCbCr_420_888,320x240,OUTPUT,
                 YCbCr_420_888,176x144,OUTPUT,
-                IMPLEMENTATION_DEFINED,4224x3136,OUTPUT,
-                IMPLEMENTATION_DEFINED,3840x2160,OUTPUT,
-                IMPLEMENTATION_DEFINED,3264x2448,OUTPUT,
-                IMPLEMENTATION_DEFINED,2592x1944,OUTPUT,
-                IMPLEMENTATION_DEFINED,2112x1568,OUTPUT,
                 IMPLEMENTATION_DEFINED,1920x1080,OUTPUT,
                 IMPLEMENTATION_DEFINED,1280x960,OUTPUT,
                 IMPLEMENTATION_DEFINED,1280x720,OUTPUT,
@@ -687,7 +677,7 @@
                 IMPLEMENTATION_DEFINED,320x240,OUTPUT,
                 IMPLEMENTATION_DEFINED,176x144,OUTPUT"/>
                 <scaler.availableMinFrameDurations value="
-                BLOB,4224x3136,33333333,
+                BLOB,4096x3136,33333333,
                 BLOB,3840x2160,33333333,
                 BLOB,3264x2448,33333333,
                 BLOB,2592x1944,33333333,
@@ -699,11 +689,6 @@
                 BLOB,352x288,33333333,
                 BLOB,320x240,33333333,
                 BLOB,176x144,33333333,
-                YCbCr_420_888,4224x3136,33333333,
-                YCbCr_420_888,3840x2160,33333333,
-                YCbCr_420_888,3264x2448,33333333,
-                YCbCr_420_888,2592x1944,33333333,
-                YCbCr_420_888,2112x1568,33333333,
                 YCbCr_420_888,1920x1080,33333333,
                 YCbCr_420_888,1280x960,33333333,
                 YCbCr_420_888,1280x720,33333333,
@@ -711,11 +696,6 @@
                 YCbCr_420_888,352x288,33333333,
                 YCbCr_420_888,320x240,33333333,
                 YCbCr_420_888,176x144,33333333,
-                IMPLEMENTATION_DEFINED,4224x3136,33333333,
-                IMPLEMENTATION_DEFINED,3840x2160,33333333,
-                IMPLEMENTATION_DEFINED,3264x2448,33333333,
-                IMPLEMENTATION_DEFINED,2592x1944,33333333,
-                IMPLEMENTATION_DEFINED,2112x1568,33333333,
                 IMPLEMENTATION_DEFINED,1920x1080,33333333,
                 IMPLEMENTATION_DEFINED,1280x960,33333333,
                 IMPLEMENTATION_DEFINED,1280x720,33333333,
@@ -724,7 +704,7 @@
                 IMPLEMENTATION_DEFINED,320x240,33333333,
                 IMPLEMENTATION_DEFINED,176x144,33333333" />
                 <scaler.availableStallDurations value="
-                                           BLOB,4224x3136,33333333,
+                                           BLOB,4096x3136,33333333,
                                            BLOB,3840x2160,33333333,
                                            BLOB,3264x2448,33333333,
                                            BLOB,2592x1944,33333333,
