@@ -90,7 +90,7 @@ public:
     virtual ~RKISP2IDeviceWorker() {}
 
     virtual status_t configure(bool configChanged) = 0;
-    virtual status_t startWorker() = 0;
+    virtual status_t startWorker(int initialSkips) = 0;
     virtual status_t flushWorker() = 0;
     virtual status_t stopWorker() = 0;
     virtual status_t prepareRun(std::shared_ptr<DeviceMessage> msg) = 0;

@@ -84,7 +84,7 @@ private:
     status_t createProcessingTasks(std::shared_ptr<RKISP2GraphConfig> graphConfig);
     void setStreamListeners(NodeTypes nodeName,
                             std::shared_ptr<RKISP2OutputFrameWorker>& source);
-    status_t kickstart();
+    status_t kickstart(int skipFrames);
     status_t stopAllWorkers();
     void clearWorkers();
     status_t skipBadFrames();

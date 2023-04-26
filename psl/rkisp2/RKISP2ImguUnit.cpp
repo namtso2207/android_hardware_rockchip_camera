@@ -278,14 +278,17 @@ RKISP2ImguUnit::configStreamsDone()
      * failed, which compares the frames numbers started to calculated from the
      * first request in 3 seconds to the recording file's.
      */
-    status_t status = kickstart();
+     const RKISP2CameraCapInfo *cap = getRKISP2CameraCapInfo(mCameraId);
+     int skipFrames = cap->frameInitialSkip();
+
+    status_t status = kickstart(skipFrames);
     if (status != OK) {
        return status;
     }
 
     /* queue buf before stream on */
     return status;
-
+#if 0
     int32_t duration = 30;    //default duration 30ms
     status = PlatformData::getCameraHWInfo()->getSensorFrameDuration(mCameraId, duration);
     if (status != NO_ERROR)
@@ -304,6 +307,7 @@ RKISP2ImguUnit::configStreamsDone()
         LOGD_CAP("@%s : no need skipFrames for still cap!", __FUNCTION__);
     }
     return status;
+#endif
 }
 
 #define streamSizeGT(s1, s2) (((s1)->width * (s1)->height) > ((s2)->width * (s2)->height))
@@ -893,14 +897,6 @@ status_t RKISP2ImguUnit::processNextRequest()
             status |= (*it)->prepareRun(msg);
     }
 
-    /*add queue buf before stream on*/
-    if (mFirstRequest) {
-        status = kickstart();
-        if (status != OK) {
-            return status;
-        }
-    }
-
     std::vector<std::shared_ptr<RKISP2FrameWorker>>::iterator pollDevice = mCurPipeConfig->pollableWorkers.begin();
     for (;pollDevice != mCurPipeConfig->pollableWorkers.end(); ++pollDevice) {
         bool needsPolling = (*pollDevice)->needPolling();
@@ -916,13 +912,13 @@ status_t RKISP2ImguUnit::processNextRequest()
 }
 
 status_t
-RKISP2ImguUnit::kickstart()
+RKISP2ImguUnit::kickstart(int skipFrames)
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
     status_t status = OK;
 
     for (const auto &it : mCurPipeConfig->deviceWorkers) {
-        status = (*it).startWorker();
+        status = (*it).startWorker(skipFrames);
         if (status != OK) {
             LOGE("Failed to start workers.");
             return status;

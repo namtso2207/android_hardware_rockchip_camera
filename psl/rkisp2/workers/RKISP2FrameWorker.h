@@ -33,7 +33,7 @@ public:
     virtual ~RKISP2FrameWorker();
 
     virtual status_t configure(bool configChanged);
-    virtual status_t startWorker();
+    virtual status_t startWorker(int initialSkips);
     virtual status_t flushWorker();
     virtual status_t stopWorker();
     virtual status_t prepareRun(std::shared_ptr<DeviceMessage> msg) = 0;
