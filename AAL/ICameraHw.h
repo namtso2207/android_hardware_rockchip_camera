@@ -21,7 +21,7 @@
 #include "hardware/camera3.h"
 #include "Camera3Request.h"
 
-#define HW_PIPELINE_MAX_DEPTH 2
+#define HW_PIPELINE_MAX_DEPTH 4
 
 NAMESPACE_DECLARATION {
 
