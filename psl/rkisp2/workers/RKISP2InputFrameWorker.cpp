@@ -68,7 +68,7 @@ RKISP2InputFrameWorker::stopWorker()
 }
 
 status_t
-RKISP2InputFrameWorker::startWorker()
+RKISP2InputFrameWorker::startWorker(int initialSkips)
 {
     return OK;
 }

@@ -40,7 +40,7 @@ public:
     status_t postRun();
     virtual status_t flushWorker();
     status_t stopWorker();
-    status_t startWorker();
+    status_t startWorker(int initialSkips);
     std::shared_ptr<V4L2VideoNode> getNode() const { return nullptr; }
     status_t notifyNewFrame(const std::shared_ptr<PostProcBuffer>& buf,
                             const std::shared_ptr<RKISP2ProcUnitSettings>& settings,

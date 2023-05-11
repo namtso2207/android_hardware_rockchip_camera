@@ -55,9 +55,11 @@ status_t RKISP2FrameWorker::configure(bool configChanged)
     return OK;
 }
 
-status_t RKISP2FrameWorker::startWorker()
+status_t RKISP2FrameWorker::startWorker(int initialSkips)
 {
     HAL_TRACE_CALL(CAM_GLBL_DBG_HIGH);
+
+
     LOGI("@%s enter, %s, mIsStarted:%d", __FUNCTION__, mName.c_str(), mIsStarted);
     if (mIsStarted == true)
         return OK;
@@ -66,6 +68,41 @@ status_t RKISP2FrameWorker::startWorker()
     if (ret != OK) {
         LOGE("Unable to start device: %s ret: %d", mNode->name(), ret);
     }
+
+    V4L2BufferInfo outBuf;
+    int index;
+    fd_set fds;
+    struct timeval tv;
+    int res;
+
+    ALOGI("@%s enter, %s, skipFrames: %d.", __FUNCTION__, mName.c_str(), initialSkips);
+    if (mNode->getBufsInDeviceCount() == 0) {
+        LOGE("@%s: devices: %s, mBuffersInDevice is 0, can't skip!", __FUNCTION__, mName.c_str());
+        return NO_ERROR;
+    }
+
+    FD_ZERO(&fds);
+    FD_SET(mNode->getFd(), &fds);
+
+    /* Timeout. */
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+
+    for (int i = 0; i < initialSkips; i++) {
+        res = select(mNode->getFd() + 1, &fds, NULL, NULL, &tv);
+        if (res <= 0) {
+            LOGE("@%s(%d) error select or select time out!!",__FUNCTION__,__LINE__);
+            return 0;
+        }
+        index = mNode->grabFrame(&outBuf);
+        ALOGI("device: %s, grabFrame buf index(%d)!", mNode->name(), index);
+        ret = mNode->putFrame(outBuf.vbuffer);
+        if (ret != OK) {
+            LOGE("Unable to putFrame from device: %s ret: %d", mNode->name(), ret);
+            return ret;
+        }
+    }
+
     mIsStarted = true;
 
     return ret;
