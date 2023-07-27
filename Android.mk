@@ -293,7 +293,6 @@ LOCAL_SHARED_LIBRARIES:= \
     libui \
     librkisp \
     libhardware \
-    libvpu \
     libcamera_metadata \
     librga
 
