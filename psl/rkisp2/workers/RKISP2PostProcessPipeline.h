@@ -33,6 +33,7 @@
 #include "tasks/RKISP2JpegEncodeTask.h"
 #include "LogHelper.h"
 #include "uvc_hal_types.h"
+#include "RKISP2CameraHw.h"
 #ifdef RK_EPTZ
 #include "RKISP2DevImpl.h"
 #endif
