@@ -1887,6 +1887,9 @@ RKISP2ControlUnit::metadataReceived(int id, const camera_metadata_t *metas, int 
             mSofSyncId = sof_frameId;
             LOGD_FLASH("%s:%d get flash_sof_sync, sof_frameId(%d) !.", __FUNCTION__, __LINE__, mSofSyncId);
         }
+        if (sof_frameId <= 5) {
+            ALOGD("@%s get sof_frameId(%d) from aiq!", __FUNCTION__, sof_frameId);
+        }
 
 #if 0
         /* used for switch resolution take picture, reduce flash time */
