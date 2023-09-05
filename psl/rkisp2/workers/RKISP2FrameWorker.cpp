@@ -68,6 +68,7 @@ status_t RKISP2FrameWorker::startWorker(int initialSkips)
     if (ret != OK) {
         LOGE("Unable to start device: %s ret: %d", mNode->name(), ret);
     }
+    mIsStarted = true;
 
     V4L2BufferInfo outBuf;
     int index;
@@ -85,7 +86,7 @@ status_t RKISP2FrameWorker::startWorker(int initialSkips)
     FD_SET(mNode->getFd(), &fds);
 
     /* Timeout. */
-    tv.tv_sec = 1;
+    tv.tv_sec = 3;
     tv.tv_usec = 0;
 
     for (int i = 0; i < initialSkips; i++) {
@@ -102,8 +103,6 @@ status_t RKISP2FrameWorker::startWorker(int initialSkips)
             return ret;
         }
     }
-
-    mIsStarted = true;
 
     return ret;
 }
